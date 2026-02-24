@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Checker | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .input-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .domain-input { flex: 1; min-width: 200px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none; }
+    .domain-input:focus { border-color: #4285f4; }
+    .domain-input::placeholder { color: #555; }
+    textarea { width: 100%; height: 180px; padding: 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.85rem; font-family: monospace; resize: vertical; outline: none; margin-bottom: 1rem; line-height: 1.5; }
+    textarea:focus { border-color: #4285f4; }
+    .btn { padding: 0.65rem 1.5rem; background: #4285f4; border: none; border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #3367d6; }
+    .btn-clear { padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.9rem; cursor: pointer; }
+    .btn-clear:hover { color: #fff; border-color: #666; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 700; }
+    .stat-label { font-size: 0.78rem; color: #888; margin-top: 0.25rem; }
+    .stat-total .stat-num { color: #fff; }
+    .stat-internal .stat-num { color: #4ade80; }
+    .stat-external .stat-num { color: #60a5fa; }
+    .stat-nofollow .stat-num { color: #fbbf24; }
+    .stat-noanchor .stat-num { color: #f87171; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+    .filter-btn { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #aaa; font-size: 0.8rem; cursor: pointer; }
+    .filter-btn.active, .filter-btn:hover { background: #4285f4; border-color: #4285f4; color: #fff; }
+    .search-small { padding: 0.4rem 0.75rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 0.82rem; outline: none; margin-left: auto; min-width: 180px; }
+    .search-small:focus { border-color: #4285f4; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.65rem 1rem; font-size: 0.78rem; color: #666; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 0.05em; background: #0d0d0d; position: sticky; top: 0; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a1a; vertical-align: middle; word-break: break-all; }
+    tr:hover td { background: #111; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+    .badge-internal { background: #14532d; color: #4ade80; }
+    .badge-external { background: #1e3a5f; color: #60a5fa; }
+    .badge-nf { background: #3a2a00; color: #fbbf24; }
+    .anchor-text { color: #ccc; }
+    .anchor-empty { color: #555; font-style: italic; }
+    .link-url { color: #888; font-size: 0.8rem; }
+    .link-url a { color: #4dabf7; text-decoration: none; }
+    .link-url a:hover { text-decoration: underline; }
+    .empty { text-align: center; color: #555; padding: 3rem; }
+    .copy-btn { padding: 0.3rem 0.6rem; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #888; font-size: 0.72rem; cursor: pointer; white-space: nowrap; }
+    .copy-btn:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>🔗 Link Checker</h1>
+  <p class="subtitle">Paste HTML to extract, categorize and visualize all links on a page</p>
+
+  <div class="input-row">
+    <input class="domain-input" id="domain-input" type="text" placeholder="Your domain (e.g. example.com) — used to classify internal vs external" />
+  </div>
+  <textarea id="html-input" placeholder="Paste your page HTML here..."></textarea>
+  <div style="display:flex;gap:0.75rem;margin-bottom:2rem;">
+    <button class="btn" onclick="analyze()">Analyze Links</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="stats">
+      <div class="stat stat-total"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total Links</div></div>
+      <div class="stat stat-internal"><div class="stat-num" id="s-internal">0</div><div class="stat-label">Internal</div></div>
+      <div class="stat stat-external"><div class="stat-num" id="s-external">0</div><div class="stat-label">External</div></div>
+      <div class="stat stat-nofollow"><div class="stat-num" id="s-nofollow">0</div><div class="stat-label">Nofollow</div></div>
+      <div class="stat stat-noanchor"><div class="stat-num" id="s-noanchor">0</div><div class="stat-label">No Anchor Text</div></div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('internal',this)">Internal</button>
+      <button class="filter-btn" onclick="setFilter('external',this)">External</button>
+      <button class="filter-btn" onclick="setFilter('nofollow',this)">Nofollow</button>
+      <button class="filter-btn" onclick="setFilter('noanchor',this)">No Anchor</button>
+      <input class="search-small" type="text" placeholder="Search links..." oninput="filterSearch(this.value)" />
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Anchor Text</th>
+          <th>URL</th>
+          <th>Type</th>
+          <th>Rel</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="links-body"></tbody>
+    </table>
+    <div id="no-links" class="empty" style="display:none;">No links match filter.</div>
+  </div>
+
+  <script>
+    let allLinks = [];
+    let currentFilter = 'all';
+    let currentSearch = '';
+
+    function analyze() {
+      const html = document.getElementById('html-input').value.trim();
+      const domain = document.getElementById('domain-input').value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      if (!html) return;
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const anchors = [...doc.querySelectorAll('a[href]')];
+
+      allLinks = anchors.map((a, i) => {
+        const href = a.getAttribute('href') || '';
+        const rel = a.getAttribute('rel') || '';
+        const anchor = a.textContent.trim().replace(/\s+/g, ' ') || a.querySelector('img') ? '[image]' : '';
+        const isInternal = !href.startsWith('http') || (domain && href.includes(domain));
+        const isNofollow = rel.includes('nofollow');
+        const isUGC = rel.includes('ugc');
+        const isSponsored = rel.includes('sponsored');
+        return { i: i + 1, href, anchor: a.textContent.trim().replace(/\s+/g, ' '), rel, isInternal, isNofollow, isUGC, isSponsored };
+      }).filter(l => l.href && l.href !== '#' && !l.href.startsWith('javascript:'));
+
+      document.getElementById('s-total').textContent = allLinks.length;
+      document.getElementById('s-internal').textContent = allLinks.filter(l => l.isInternal).length;
+      document.getElementById('s-external').textContent = allLinks.filter(l => !l.isInternal).length;
+      document.getElementById('s-nofollow').textContent = allLinks.filter(l => l.isNofollow).length;
+      document.getElementById('s-noanchor').textContent = allLinks.filter(l => !l.anchor).length;
+
+      document.getElementById('results').style.display = 'block';
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('links-body');
+      const noLinks = document.getElementById('no-links');
+      const filtered = allLinks.filter(l => {
+        if (currentFilter === 'internal' && !l.isInternal) return false;
+        if (currentFilter === 'external' && l.isInternal) return false;
+        if (currentFilter === 'nofollow' && !l.isNofollow) return false;
+        if (currentFilter === 'noanchor' && l.anchor) return false;
+        if (currentSearch) {
+          const q = currentSearch.toLowerCase();
+          if (!l.href.toLowerCase().includes(q) && !l.anchor.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+
+      if (!filtered.length) { tbody.innerHTML = ''; noLinks.style.display = 'block'; return; }
+      noLinks.style.display = 'none';
+
+      tbody.innerHTML = filtered.map(l => {
+        const relTags = [
+          l.isNofollow ? '<span class="badge badge-nf">nofollow</span>' : '',
+          l.isUGC ? '<span class="badge" style="background:#1a2a1a;color:#86efac">ugc</span>' : '',
+          l.isSponsored ? '<span class="badge" style="background:#2a1a2a;color:#d946ef">sponsored</span>' : '',
+        ].filter(Boolean).join(' ') || '<span style="color:#555;font-size:0.75rem;">—</span>';
+
+        const displayHref = l.href.length > 60 ? l.href.slice(0, 60) + '…' : l.href;
+        const fullUrl = l.href.startsWith('http') ? l.href : '#';
+
+        return `<tr>
+          <td style="color:#555">${l.i}</td>
+          <td>${l.anchor ? `<span class="anchor-text">${l.anchor}</span>` : '<span class="anchor-empty">No anchor text</span>'}</td>
+          <td class="link-url"><a href="${fullUrl}" target="_blank" rel="noopener" title="${l.href}">${displayHref}</a></td>
+          <td>${l.isInternal ? '<span class="badge badge-internal">internal</span>' : '<span class="badge badge-external">external</span>'}</td>
+          <td>${relTags}</td>
+          <td><button class="copy-btn" onclick="navigator.clipboard.writeText('${l.href.replace(/'/g, "\\'")}')">Copy</button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setFilter(f, el) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      currentFilter = f;
+      renderTable();
+    }
+
+    function filterSearch(q) {
+      currentSearch = q;
+      renderTable();
+    }
+
+    function clearAll() {
+      document.getElementById('html-input').value = '';
+      document.getElementById('domain-input').value = '';
+      document.getElementById('results').style.display = 'none';
+      allLinks = [];
+    }
+  </script>
+</body>
+</html>
