@@ -63,6 +63,7 @@
         </div>
         <div class="hud">
             <div>Drops: <strong id="dropsDisplay">10</strong></div>
+            <div>Level: <strong id="levelDisplay">1</strong></div>
             <div>Best: <strong id="bestDisplay">—</strong></div>
             <div>Avg: <strong id="avgDisplay">—</strong></div>
         </div>
@@ -75,10 +76,17 @@
                 <button class="play-btn" id="startBtn">Play</button>
             </div>
             <div class="overlay hidden" id="gameOverOverlay">
-                <h2>Round Over</h2>
+                <h2 id="roundTitle">Round Over</h2>
                 <div class="final-score" id="finalAvg">—</div>
-                <p>Average Ranking</p>
+                <p id="roundSubtitle">Average Ranking</p>
                 <button class="play-btn" id="restartBtn">Play Again</button>
+            </div>
+            <div class="overlay hidden" id="levelOverlay">
+                <h2 id="levelTitle">Level Complete!</h2>
+                <div class="final-score" id="levelAvg">—</div>
+                <p id="levelSubtitle">Average Ranking</p>
+                <p id="levelHint" style="color:#6c63ff;font-size:0.8rem;margin-top:0.5rem;"></p>
+                <button class="play-btn" id="nextBtn">Next Level</button>
             </div>
         </div>
         <p class="controls-hint">Click a drop slot or click the board to drop &middot; Land on #1 for the best ranking!</p>
@@ -91,68 +99,108 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-// Layout
-const PEG_ROWS = 12;
-const PEG_COLS = 11;
-const PEG_R = 4;
+// Constants
 const BALL_R = 8;
 const SLOT_COUNT = 10;
-const PEG_START_Y = 60;
-const PEG_SPACING_Y = 34;
-const PEG_SPACING_X = W / (PEG_COLS + 1);
-const SLOT_H = 50;
-const SLOT_Y = PEG_START_Y + PEG_ROWS * PEG_SPACING_Y + 10;
-
-// Slots: 1 in center, outward to 10
-// For 10 slots: [10, 8, 6, 4, 2, 1, 3, 5, 7, 9]
 const SLOT_RANKS = [10, 8, 6, 4, 2, 1, 3, 5, 7, 9];
 const SLOT_W = W / SLOT_COUNT;
+const GRAVITY = 0.25;
+const FRICTION = 0.98;
+const BOUNCE = 0.6;
 
 const SLOT_COLORS = {
-    1: '#ffd700',
-    2: '#c0c0c0',
-    3: '#cd7f32',
-    4: '#4ade80',
-    5: '#4ade80',
-    6: '#fbbf24',
-    7: '#fbbf24',
-    8: '#f87171',
-    9: '#f87171',
-    10: '#ef4444'
+    1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32', 4: '#4ade80', 5: '#4ade80',
+    6: '#fbbf24', 7: '#fbbf24', 8: '#f87171', 9: '#f87171', 10: '#ef4444'
 };
-
 const SEO_LABELS = {
-    1: '#1 Featured!',
-    2: '#2 Top Spot',
-    3: '#3 Podium',
-    4: '#4 Above Fold',
-    5: '#5 Solid',
-    6: '#6 Mid Pack',
-    7: '#7 Below Fold',
-    8: '#8 Page Bottom',
-    9: '#9 Buried',
-    10: '#10 Last Spot'
+    1: '#1 Featured!', 2: '#2 Top Spot', 3: '#3 Podium', 4: '#4 Above Fold', 5: '#5 Solid',
+    6: '#6 Mid Pack', 7: '#7 Below Fold', 8: '#8 Page Bottom', 9: '#9 Buried', 10: '#10 Last Spot'
 };
 
-// Pegs
-const pegs = [];
-for (let r = 0; r < PEG_ROWS; r++) {
-    const cols = r % 2 === 0 ? PEG_COLS : PEG_COLS - 1;
-    const offsetX = r % 2 === 0 ? PEG_SPACING_X : PEG_SPACING_X * 1.5;
-    for (let c = 0; c < cols; c++) {
-        pegs.push({ x: offsetX + c * PEG_SPACING_X, y: PEG_START_Y + r * PEG_SPACING_Y });
-    }
-}
+// Level definitions
+const LEVELS = [
+    { name: 'Fresh Site', rows: 10, cols: 9,  pegR: 4, bumpers: [], blockers: [], movers: [], desc: 'Standard board — aim for #1!' },
+    { name: 'Crawl Budget', rows: 12, cols: 11, pegR: 4, bumpers: [], blockers: [], movers: [], desc: 'More pegs, more chaos' },
+    { name: 'Algorithm Update', rows: 12, cols: 11, pegR: 5, bumpers: [
+        { x: W*0.5, y: 180, r: 18 }
+    ], blockers: [], movers: [], desc: 'Watch out for the bumper!' },
+    { name: 'Penalty Zone', rows: 13, cols: 11, pegR: 4, bumpers: [
+        { x: W*0.3, y: 160, r: 16 }, { x: W*0.7, y: 160, r: 16 }
+    ], blockers: [
+        { x: W*0.5 - 25, y: 280, w: 50, h: 6 }
+    ], movers: [], desc: 'Blockers deflect your path' },
+    { name: 'Index Bloat', rows: 14, cols: 11, pegR: 5, bumpers: [
+        { x: W*0.5, y: 140, r: 20 }
+    ], blockers: [
+        { x: W*0.25 - 20, y: 260, w: 40, h: 6 },
+        { x: W*0.75 - 20, y: 260, w: 40, h: 6 }
+    ], movers: [
+        { x: W*0.5, y: 340, w: 60, speed: 0.8 }
+    ], desc: 'Moving obstacles block the center' },
+    { name: 'Core Web Vitals', rows: 12, cols: 13, pegR: 4, bumpers: [
+        { x: W*0.35, y: 150, r: 14 }, { x: W*0.65, y: 150, r: 14 },
+        { x: W*0.5, y: 250, r: 22 }
+    ], blockers: [], movers: [
+        { x: W*0.3, y: 320, w: 50, speed: 1.0 },
+        { x: W*0.7, y: 370, w: 50, speed: -0.8 }
+    ], desc: 'Dense pegs and dual movers' },
+    { name: 'Manual Action', rows: 14, cols: 13, pegR: 5, bumpers: [
+        { x: W*0.2, y: 130, r: 16 }, { x: W*0.8, y: 130, r: 16 },
+        { x: W*0.5, y: 200, r: 24 },
+        { x: W*0.35, y: 320, r: 14 }, { x: W*0.65, y: 320, r: 14 }
+    ], blockers: [
+        { x: W*0.5 - 30, y: 380, w: 60, h: 6 }
+    ], movers: [
+        { x: W*0.5, y: 280, w: 70, speed: 1.2 }
+    ], desc: 'Bumpers everywhere — good luck!' },
+    { name: 'Deindexed', rows: 14, cols: 13, pegR: 6, bumpers: [
+        { x: W*0.3, y: 120, r: 18 }, { x: W*0.7, y: 120, r: 18 },
+        { x: W*0.5, y: 190, r: 26 },
+        { x: W*0.2, y: 290, r: 14 }, { x: W*0.8, y: 290, r: 14 },
+        { x: W*0.5, y: 360, r: 18 }
+    ], blockers: [
+        { x: W*0.35 - 20, y: 240, w: 40, h: 6 },
+        { x: W*0.65 - 20, y: 240, w: 40, h: 6 }
+    ], movers: [
+        { x: W*0.3, y: 330, w: 55, speed: -1.0 },
+        { x: W*0.7, y: 400, w: 55, speed: 1.3 }
+    ], desc: 'The ultimate SEO nightmare' }
+];
 
-// State
+// Dynamic state
+let pegs = [];
+let level = 0;
 let balls = [];
 let drops = 10;
 let results = [];
-let gameState = 'start'; // start, playing, over
-let dropSlot = 5; // default middle
-
-// Particles
+let totalResults = [];
+let gameState = 'start';
+let dropSlot = 5;
 let particles = [];
+let currentLevel = LEVELS[0];
+
+const PEG_START_Y = 60;
+
+function buildPegs() {
+    pegs = [];
+    const rows = currentLevel.rows;
+    const cols = currentLevel.cols;
+    const pegSpacingX = W / (cols + 1);
+    const pegSpacingY = Math.min(34, (H - 130) / (rows + 1));
+    for (let r = 0; r < rows; r++) {
+        const c = r % 2 === 0 ? cols : cols - 1;
+        const ox = r % 2 === 0 ? pegSpacingX : pegSpacingX * 1.5;
+        for (let j = 0; j < c; j++) {
+            pegs.push({ x: ox + j * pegSpacingX, y: PEG_START_Y + r * pegSpacingY });
+        }
+    }
+}
+
+function getSlotY() {
+    const rows = currentLevel.rows;
+    const pegSpacingY = Math.min(34, (H - 130) / (rows + 1));
+    return PEG_START_Y + rows * pegSpacingY + 10;
+}
 
 // Drop zone buttons
 const dropZone = document.getElementById('dropZone');
@@ -171,43 +219,31 @@ for (let i = 0; i < SLOT_COUNT; i++) {
 
 function dropBall() {
     if (drops <= 0 || balls.some(b => !b.done)) return;
-    const x = (dropSlot + 0.5) * (W / SLOT_COUNT) + (Math.random() - 0.5) * 10;
-    balls.push({
-        x: x, y: 15,
-        vx: 0, vy: 0,
-        done: false,
-        landed: false,
-        landRank: null,
-        trail: []
-    });
+    const x = (dropSlot + 0.5) * SLOT_W + (Math.random() - 0.5) * 10;
+    balls.push({ x, y: 15, vx: 0, vy: 0, done: false, landed: false, landRank: null, trail: [] });
     drops--;
     document.getElementById('dropsDisplay').textContent = drops;
 }
 
-// Physics
-const GRAVITY = 0.25;
-const FRICTION = 0.98;
-const BOUNCE = 0.6;
-
 function updateBall(b) {
     if (b.done) return;
+    const slotY = getSlotY();
+    const SLOT_H = 50;
+    const pegR = currentLevel.pegR;
 
     b.vy += GRAVITY;
     b.vx *= FRICTION;
-
     b.x += b.vx;
     b.y += b.vy;
 
-    // Trail
-    b.trail.push({ x: b.x, y: b.y, a: 1 });
+    b.trail.push({ x: b.x, y: b.y });
     if (b.trail.length > 20) b.trail.shift();
 
     // Peg collisions
     for (const p of pegs) {
-        const dx = b.x - p.x;
-        const dy = b.y - p.y;
+        const dx = b.x - p.x, dy = b.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = BALL_R + PEG_R;
+        const minDist = BALL_R + pegR;
         if (dist < minDist && dist > 0) {
             const nx = dx / dist, ny = dy / dist;
             b.x = p.x + nx * minDist;
@@ -215,18 +251,48 @@ function updateBall(b) {
             const dot = b.vx * nx + b.vy * ny;
             b.vx -= 2 * dot * nx * BOUNCE;
             b.vy -= 2 * dot * ny * BOUNCE;
-            // Add randomness
             b.vx += (Math.random() - 0.5) * 1.5;
-            // Particles
             for (let i = 0; i < 3; i++) {
-                particles.push({
-                    x: p.x, y: p.y,
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: (Math.random() - 0.5) * 3,
-                    life: 20,
-                    color: '#6c63ff'
-                });
+                particles.push({ x: p.x, y: p.y, vx: (Math.random()-.5)*3, vy: (Math.random()-.5)*3, life: 20, color: '#6c63ff' });
             }
+        }
+    }
+
+    // Bumper collisions
+    for (const bmp of currentLevel.bumpers) {
+        const dx = b.x - bmp.x, dy = b.y - bmp.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = BALL_R + bmp.r;
+        if (dist < minDist && dist > 0) {
+            const nx = dx / dist, ny = dy / dist;
+            b.x = bmp.x + nx * minDist;
+            b.y = bmp.y + ny * minDist;
+            const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+            b.vx = nx * Math.max(speed * 1.3, 4);
+            b.vy = ny * Math.max(speed * 1.3, 4);
+            for (let i = 0; i < 8; i++) {
+                particles.push({ x: bmp.x+nx*bmp.r, y: bmp.y+ny*bmp.r, vx: (Math.random()-.5)*5, vy: (Math.random()-.5)*5, life: 30, color: '#ff6b6b' });
+            }
+        }
+    }
+
+    // Blocker collisions
+    for (const bl of currentLevel.blockers) {
+        if (b.x + BALL_R > bl.x && b.x - BALL_R < bl.x + bl.w && b.y + BALL_R > bl.y && b.y - BALL_R < bl.y + bl.h) {
+            if (b.vy > 0) { b.y = bl.y - BALL_R; b.vy = -Math.abs(b.vy) * BOUNCE; }
+            else { b.y = bl.y + bl.h + BALL_R; b.vy = Math.abs(b.vy) * BOUNCE; }
+            b.vx += (Math.random() - 0.5) * 2;
+        }
+    }
+
+    // Mover collisions
+    for (const mv of currentLevel.movers) {
+        const mx = mv.x + Math.sin(Date.now() * 0.002 * Math.abs(mv.speed)) * (W * 0.2) * Math.sign(mv.speed);
+        const mw = mv.w, mh = 8;
+        if (b.x + BALL_R > mx - mw/2 && b.x - BALL_R < mx + mw/2 && b.y + BALL_R > mv.y && b.y - BALL_R < mv.y + mh) {
+            if (b.vy > 0) { b.y = mv.y - BALL_R; b.vy = -Math.abs(b.vy) * BOUNCE; }
+            else { b.y = mv.y + mh + BALL_R; b.vy = Math.abs(b.vy) * BOUNCE; }
+            b.vx += mv.speed * 1.5;
         }
     }
 
@@ -235,41 +301,45 @@ function updateBall(b) {
     if (b.x > W - BALL_R) { b.x = W - BALL_R; b.vx = -Math.abs(b.vx) * BOUNCE; }
 
     // Landing
-    if (b.y >= SLOT_Y - BALL_R) {
-        b.y = SLOT_Y - BALL_R;
-        b.vy = 0;
-        b.vx = 0;
+    if (b.y >= slotY - BALL_R) {
+        b.y = slotY - BALL_R;
+        b.vy = 0; b.vx = 0;
         b.done = true;
-
         const slotIdx = Math.min(SLOT_COUNT - 1, Math.max(0, Math.floor(b.x / SLOT_W)));
         b.landRank = SLOT_RANKS[slotIdx];
         b.landed = true;
 
-        // Celebration particles
         const color = SLOT_COLORS[b.landRank];
         const count = b.landRank <= 3 ? 30 : 10;
         for (let i = 0; i < count; i++) {
             const angle = (Math.PI * 2 * i) / count;
             const speed = 2 + Math.random() * 3;
-            particles.push({
-                x: b.x, y: b.y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed - 2,
-                life: 40 + Math.random() * 20,
-                color: color
-            });
+            particles.push({ x: b.x, y: b.y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed-2, life: 40+Math.random()*20, color });
         }
 
         results.push(b.landRank);
-        addHistory(results.length, b.landRank);
+        totalResults.push(b.landRank);
+        addHistory(totalResults.length, b.landRank);
         updateStats();
 
         if (drops <= 0) {
             setTimeout(() => {
-                gameState = 'over';
                 const avg = (results.reduce((a, b) => a + b, 0) / results.length).toFixed(1);
-                document.getElementById('finalAvg').textContent = '#' + avg;
-                document.getElementById('gameOverOverlay').classList.remove('hidden');
+                if (level < LEVELS.length - 1) {
+                    document.getElementById('levelAvg').textContent = '#' + avg;
+                    document.getElementById('levelTitle').textContent = 'Level ' + (level + 1) + ' Complete!';
+                    document.getElementById('levelSubtitle').textContent = currentLevel.name + ' — Avg Ranking';
+                    const next = LEVELS[level + 1];
+                    document.getElementById('levelHint').textContent = 'Next: ' + next.name + ' — ' + next.desc;
+                    document.getElementById('levelOverlay').classList.remove('hidden');
+                } else {
+                    const totalAvg = (totalResults.reduce((a, b) => a + b, 0) / totalResults.length).toFixed(1);
+                    document.getElementById('finalAvg').textContent = '#' + totalAvg;
+                    document.getElementById('roundTitle').textContent = '🏆 All Levels Complete!';
+                    document.getElementById('roundSubtitle').textContent = 'Overall Average Ranking across ' + totalResults.length + ' drops';
+                    document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    gameState = 'over';
+                }
             }, 800);
         }
     }
@@ -281,23 +351,24 @@ function addHistory(num, rank) {
     const entry = document.createElement('div');
     entry.className = 'history-entry';
     const rc = rank <= 1 ? 'rank-1' : rank <= 2 ? 'rank-2' : rank <= 3 ? 'rank-3' : rank <= 5 ? 'rank-top' : rank <= 7 ? 'rank-mid' : 'rank-low';
-    entry.innerHTML = `<span>Drop #${num}</span><span class="${rc}">${SEO_LABELS[rank]}</span>`;
+    entry.innerHTML = `<span>L${level+1} Drop #${num}</span><span class="${rc}">${SEO_LABELS[rank]}</span>`;
     hist.prepend(entry);
 }
 
 function updateStats() {
     if (results.length === 0) return;
-    const best = Math.min(...results);
-    const avg = (results.reduce((a, b) => a + b, 0) / results.length).toFixed(1);
+    const best = Math.min(...totalResults);
+    const avg = (totalResults.reduce((a, b) => a + b, 0) / totalResults.length).toFixed(1);
     document.getElementById('bestDisplay').textContent = '#' + best;
     document.getElementById('avgDisplay').textContent = '#' + avg;
 }
 
-// Rendering
+// Drawing
 function drawPegs() {
+    const pegR = currentLevel.pegR;
     for (const p of pegs) {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, PEG_R, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, pegR, 0, Math.PI * 2);
         ctx.fillStyle = '#3a3a5a';
         ctx.fill();
         ctx.strokeStyle = '#5a5a7a';
@@ -306,41 +377,78 @@ function drawPegs() {
     }
 }
 
+function drawBumpers() {
+    for (const bmp of currentLevel.bumpers) {
+        ctx.beginPath();
+        ctx.arc(bmp.x, bmp.y, bmp.r, 0, Math.PI * 2);
+        const grd = ctx.createRadialGradient(bmp.x, bmp.y, 2, bmp.x, bmp.y, bmp.r);
+        grd.addColorStop(0, '#ff6b6b');
+        grd.addColorStop(1, '#cc3333');
+        ctx.fillStyle = grd;
+        ctx.fill();
+        ctx.strokeStyle = '#ff8888';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowColor = '#ff6b6b';
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+}
+
+function drawBlockers() {
+    for (const bl of currentLevel.blockers) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.roundRect(bl.x, bl.y, bl.w, bl.h, 3);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+function drawMovers() {
+    for (const mv of currentLevel.movers) {
+        const mx = mv.x + Math.sin(Date.now() * 0.002 * Math.abs(mv.speed)) * (W * 0.2) * Math.sign(mv.speed);
+        ctx.fillStyle = '#a78bfa';
+        ctx.shadowColor = '#a78bfa';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect(mx - mv.w/2, mv.y, mv.w, 8, 4);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
 function drawSlots() {
+    const slotY = getSlotY();
+    const SLOT_H = 50;
     for (let i = 0; i < SLOT_COUNT; i++) {
         const x = i * SLOT_W;
         const rank = SLOT_RANKS[i];
         const color = SLOT_COLORS[rank];
-
-        // Slot background
         ctx.fillStyle = color + '15';
-        ctx.fillRect(x + 1, SLOT_Y, SLOT_W - 2, SLOT_H);
-
-        // Dividers
+        ctx.fillRect(x + 1, slotY, SLOT_W - 2, SLOT_H);
         ctx.strokeStyle = '#2a2a3a';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(x, SLOT_Y);
-        ctx.lineTo(x, SLOT_Y + SLOT_H);
+        ctx.moveTo(x, slotY);
+        ctx.lineTo(x, slotY + SLOT_H);
         ctx.stroke();
-
-        // Rank number
         ctx.fillStyle = color;
         ctx.font = 'bold 16px Inter, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('#' + rank, x + SLOT_W / 2, SLOT_Y + 24);
-
-        // Small label
+        ctx.fillText('#' + rank, x + SLOT_W / 2, slotY + 24);
         ctx.fillStyle = color + '88';
         ctx.font = '9px Inter, sans-serif';
-        const labels = { 1: 'RANK 1', 2: 'RANK 2', 3: 'RANK 3', 4: 'TOP 5', 5: 'TOP 5', 6: 'MID', 7: 'MID', 8: 'LOW', 9: 'LOW', 10: 'LAST' };
-        ctx.fillText(labels[rank], x + SLOT_W / 2, SLOT_Y + 40);
+        const labels = { 1:'RANK 1', 2:'RANK 2', 3:'RANK 3', 4:'TOP 5', 5:'TOP 5', 6:'MID', 7:'MID', 8:'LOW', 9:'LOW', 10:'LAST' };
+        ctx.fillText(labels[rank], x + SLOT_W / 2, slotY + 40);
     }
 }
 
 function drawBalls() {
     for (const b of balls) {
-        // Trail
         for (let i = 0; i < b.trail.length; i++) {
             const t = b.trail[i];
             const alpha = (i / b.trail.length) * 0.3;
@@ -349,8 +457,6 @@ function drawBalls() {
             ctx.fillStyle = `rgba(108, 99, 255, ${alpha})`;
             ctx.fill();
         }
-
-        // Ball
         const grd = ctx.createRadialGradient(b.x - 2, b.y - 2, 1, b.x, b.y, BALL_R);
         if (b.done && b.landRank) {
             const c = SLOT_COLORS[b.landRank];
@@ -366,8 +472,6 @@ function drawBalls() {
         ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = grd;
         ctx.fill();
-
-        // Glow
         ctx.shadowColor = b.done ? (SLOT_COLORS[b.landRank] || '#6c63ff') : '#6c63ff';
         ctx.shadowBlur = 12;
         ctx.beginPath();
@@ -387,56 +491,56 @@ function drawParticles() {
     }
 }
 
+function drawLevelLabel() {
+    ctx.fillStyle = '#ffffff22';
+    ctx.font = 'bold 11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Level ' + (level + 1) + ': ' + currentLevel.name, W / 2, 48);
+}
+
 function drawDropIndicator() {
     if (gameState !== 'playing' || balls.some(b => !b.done)) return;
-    const x = (dropSlot + 0.5) * (W / SLOT_COUNT);
+    const x = (dropSlot + 0.5) * SLOT_W;
     ctx.save();
     ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.005) * 0.2;
     ctx.beginPath();
     ctx.arc(x, 15, BALL_R, 0, Math.PI * 2);
     ctx.fillStyle = '#6c63ff';
     ctx.fill();
-    // Arrow
     ctx.beginPath();
     ctx.moveTo(x, 28);
     ctx.lineTo(x - 5, 22);
     ctx.lineTo(x + 5, 22);
     ctx.closePath();
-    ctx.fillStyle = '#6c63ff';
     ctx.fill();
     ctx.restore();
 }
 
 function loop() {
     ctx.clearRect(0, 0, W, H);
-
+    drawLevelLabel();
     drawSlots();
     drawPegs();
+    drawBumpers();
+    drawBlockers();
+    drawMovers();
     drawDropIndicator();
-
     for (const b of balls) updateBall(b);
     drawBalls();
-
-    // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.08;
-        p.life--;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life--;
         if (p.life <= 0) particles.splice(i, 1);
     }
     drawParticles();
-
     requestAnimationFrame(loop);
 }
 
-// Click on canvas to drop
+// Input
 canvas.addEventListener('click', (e) => {
     if (gameState !== 'playing') return;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const x = (e.clientX - rect.left) * scaleX;
+    const x = (e.clientX - rect.left) * (W / rect.width);
     const newSlot = Math.min(SLOT_COUNT - 1, Math.max(0, Math.floor(x / SLOT_W)));
     document.querySelectorAll('.drop-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.drop-btn')[newSlot].classList.add('active');
@@ -444,14 +548,12 @@ canvas.addEventListener('click', (e) => {
     dropBall();
 });
 
-// Touch
 canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
     if (gameState !== 'playing') return;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
     const touch = e.changedTouches[0];
-    const x = (touch.clientX - rect.left) * scaleX;
+    const x = (touch.clientX - rect.left) * (W / rect.width);
     const newSlot = Math.min(SLOT_COUNT - 1, Math.max(0, Math.floor(x / SLOT_W)));
     document.querySelectorAll('.drop-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.drop-btn')[newSlot].classList.add('active');
@@ -459,24 +561,41 @@ canvas.addEventListener('touchend', (e) => {
     dropBall();
 });
 
-function startGame() {
+function loadLevel(n) {
+    level = n;
+    currentLevel = LEVELS[level];
+    buildPegs();
     balls = [];
     results = [];
     particles = [];
     drops = 10;
-    gameState = 'playing';
     document.getElementById('dropsDisplay').textContent = drops;
+    document.getElementById('levelDisplay').textContent = level + 1;
+}
+
+function startGame() {
+    totalResults = [];
     document.getElementById('bestDisplay').textContent = '—';
     document.getElementById('avgDisplay').textContent = '—';
     document.getElementById('history').innerHTML = '<div style="color:#555;text-align:center;">Drop history will appear here</div>';
+    loadLevel(0);
+    gameState = 'playing';
     document.getElementById('startOverlay').classList.add('hidden');
     document.getElementById('gameOverOverlay').classList.add('hidden');
+    document.getElementById('levelOverlay').classList.add('hidden');
+}
+
+function nextLevel() {
+    loadLevel(level + 1);
+    gameState = 'playing';
+    document.getElementById('levelOverlay').classList.add('hidden');
 }
 
 document.getElementById('startBtn').onclick = startGame;
 document.getElementById('restartBtn').onclick = startGame;
+document.getElementById('nextBtn').onclick = nextLevel;
 
-// Responsive canvas
+// Responsive
 function resize() {
     const wrap = document.querySelector('.game-wrapper');
     const maxW = Math.min(480, wrap.clientWidth);
@@ -486,6 +605,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+buildPegs();
 loop();
 </script>
 </body>
