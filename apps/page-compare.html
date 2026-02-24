@@ -79,6 +79,7 @@
     .heading-list { background: #111; border: 1px solid #222; border-radius: 8px; padding: 0.75rem; max-height: 400px; overflow-y: auto; }
     .heading-entry { padding: 0.3rem 0; font-size: 0.82rem; line-height: 1.4; border-bottom: 1px solid #1a1a1a; }
     .heading-entry:last-child { border-bottom: none; }
+    .heading-match { background: #1a2e1a; border-left: 2px solid #4ade80; }
     .heading-tag { display: inline-block; width: 28px; font-weight: 700; font-size: 0.72rem; margin-right: 0.4rem; border-radius: 3px; text-align: center; padding: 1px 0; }
     .ht-1 { color: #f87171; background: #3a1515; }
     .ht-2 { color: #fb923c; background: #3a2510; }
@@ -570,19 +571,26 @@
       document.getElementById('results').style.display = 'block';
       document.getElementById('csv-btn').style.display = 'inline-block';
 
-      // Render heading outlines
-      function renderOutline(list, elId) {
+      // Render heading outlines with common heading highlights
+      const listA = dataA ? dataA.headingList : [];
+      const listB = dataB ? dataB.headingList : [];
+      const normalize = s => s.toLowerCase().trim();
+      const setB = new Set(listB.map(h => normalize(h.text)));
+      const setA = new Set(listA.map(h => normalize(h.text)));
+
+      function renderOutline(list, elId, matchSet) {
         const el = document.getElementById(elId);
         if (!list || list.length === 0) {
           el.innerHTML = '<div style="color:#555;font-size:0.82rem;">No headings found</div>';
           return;
         }
-        el.innerHTML = list.map(h =>
-          `<div class="heading-entry" style="padding-left:${(h.level - 1) * 12}px;"><span class="heading-tag ht-${h.level}">H${h.level}</span>${h.text}</div>`
-        ).join('');
+        el.innerHTML = list.map(h => {
+          const isMatch = matchSet.has(normalize(h.text));
+          return `<div class="heading-entry${isMatch ? ' heading-match' : ''}" style="padding-left:${(h.level - 1) * 12}px;"><span class="heading-tag ht-${h.level}">H${h.level}</span>${h.text}${isMatch ? ' <span style="color:#4ade80;font-size:0.7rem;">● match</span>' : ''}</div>`;
+        }).join('');
       }
-      renderOutline(dataA ? dataA.headingList : [], 'outline-yours');
-      renderOutline(dataB ? dataB.headingList : [], 'outline-comp');
+      renderOutline(listA, 'outline-yours', setB);
+      renderOutline(listB, 'outline-comp', setA);
     }
 
     async function runComparison() {
