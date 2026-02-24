@@ -81,7 +81,7 @@ img { max-width: 100%; height: auto; }
 }
 .nav-brand:hover { color: var(--text); }
 .nav-logo {
-    height: 32px;
+    height: 36px;
     width: auto;
 }
 
