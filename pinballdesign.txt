@@ -1,0 +1,52 @@
+Redesign the visual theme of this pinball game with a techy, data dashboard aesthetic inspired by SEO analytics tools. Keep all existing game logic intact — only change visual styling, colors, labels, and graphical elements.
+
+VISUAL STYLE:
+- Dark background (#0a0f1e or similar deep navy/charcoal)
+- Accent colors: electric green (#00ff88), cyan (#00d4ff), and amber (#ffaa00) for highlights
+- Monospace or geometric sans-serif fonts (think Google Data Studio / Looker vibes)
+- Subtle grid lines across the play field, like graph paper or a coordinate system
+- Faint data stream / matrix-style particle effects in the background
+- All score displays should look like KPI cards or metric widgets with labels like "Domain Rating", "Organic Sessions", "Crawl Score"
+
+GAME ELEMENTS TO RESTYLE:
+
+BALL:
+- Style as a crawl bot / spider icon or a pulsing data node
+- Add a faint trailing glow effect as it moves
+
+FLIPPERS:
+- Label them "On-Page" (left) and "Off-Page" (right)
+- Style as sleek toolbar buttons or nav tabs from an analytics UI
+
+BUMPERS:
+- Each bumper should look like a keyword bubble/tag (rounded pill shape)
+- Label them with real SEO terms: "long-tail", "seed keyword", "LSI", "search intent"
+- Flash green and increment a "Keyword Score" counter when hit
+
+TARGETS / LANES:
+- Style as SERP result snippets — small cards with a fake blue link title, gray URL, and snippet text
+- Hitting a target "ranks" that result (add a #1 badge or gold highlight)
+
+BACKLINK WEB:
+- In the upper half of the playfield, draw a node graph with connecting lines representing a backlink network
+- Nodes light up and connections animate when the ball passes through that zone
+- Label the zone "Link Equity Zone"
+
+DOMAIN AUTHORITY METER:
+- Replace the traditional score display with a DA meter (0–100 gauge or progress bar)
+- Filling it up = leveling up / bonus round trigger
+- Style it like a dial widget from a dashboard
+
+BOSS ELEMENTS (algorithm update targets):
+- Add 2–3 named targets styled as Google algorithm update cards: "Panda", "Penguin", "Helpful Content"
+- Each has a health bar; hitting them repeatedly drains it
+- When defeated, trigger a visual "Core Update" flash effect across the screen with a score bonus
+
+ADDITIONAL DETAILS:
+- Replace generic "GAME OVER" with "Deindexed." in red
+- Replace "NEW GAME" with "Recrawl" 
+- Replace "HIGH SCORE" with "Authority Leader"
+- Add a small live readout panel on the side showing fake-but-fun stats: Bounce Rate, Pages Crawled, Backlinks Earned
+- All hit sound effects (if any) should have SEO-themed labels that flash on screen: "Indexed!", "Ranked!", "Penalized!", "Link Earned!", "Crawled!"
+
+Maintain the existing canvas/game loop structure. Apply changes using CSS variables and canvas draw calls where possible to keep the code modular.
