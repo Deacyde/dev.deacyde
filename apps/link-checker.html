@@ -59,6 +59,12 @@
   <p class="subtitle">Paste HTML to extract, categorize and visualize all links on a page</p>
 
   <div class="input-row">
+    <input class="domain-input" id="url-input" type="text" placeholder="Enter a URL to fetch automatically (e.g. https://example.com/page)" />
+    <button class="btn" onclick="fetchFromUrl()">Fetch</button>
+  </div>
+  <div id="fetch-status" style="font-size:0.82rem;color:#888;margin-bottom:0.75rem;min-height:1.2rem;"></div>
+  <div style="text-align:center;color:#444;font-size:0.8rem;margin-bottom:0.75rem;">— or paste HTML manually —</div>
+  <div class="input-row">
     <input class="domain-input" id="domain-input" type="text" placeholder="Your domain (e.g. example.com) — used to classify internal vs external" />
   </div>
   <textarea id="html-input" placeholder="Paste your page HTML here..."></textarea>
@@ -105,6 +111,36 @@
     let allLinks = [];
     let currentFilter = 'all';
     let currentSearch = '';
+
+    async function fetchFromUrl() {
+      const url = document.getElementById('url-input').value.trim();
+      if (!url) return;
+      const status = document.getElementById('fetch-status');
+      status.style.color = '#888';
+      status.textContent = '⏳ Fetching page...';
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+        if (!data.contents) throw new Error('Empty response');
+        document.getElementById('html-input').value = data.contents;
+        // Auto-fill domain from URL
+        const domain = new URL(url).hostname;
+        document.getElementById('domain-input').value = domain;
+        status.style.color = '#4ade80';
+        status.textContent = `✅ Fetched ${url}`;
+        analyze();
+      } catch(e) {
+        status.style.color = '#f87171';
+        status.textContent = '❌ Failed to fetch — try pasting HTML manually.';
+      }
+    }
+
+    // Allow pressing Enter in URL input
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('url-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') fetchFromUrl();
+      });
+    });
 
     function analyze() {
       const html = document.getElementById('html-input').value.trim();
