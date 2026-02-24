@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core Web Vitals Reference | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+    .card { background: #111; border: 1px solid #222; border-radius: 10px; padding: 1.5rem; }
+    .card-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .card h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .card h2 span { font-size: 0.8rem; color: #666; font-weight: 400; margin-left: 0.5rem; }
+    .card .desc { color: #888; font-size: 0.85rem; margin-bottom: 1.25rem; line-height: 1.5; }
+    .thresholds { display: flex; flex-direction: column; gap: 0.5rem; }
+    .threshold { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; }
+    .good { background: #0f2d1a; color: #4ade80; }
+    .needs-improvement { background: #2d1f0a; color: #fbbf24; }
+    .poor { background: #2d0f0f; color: #f87171; }
+    .label { font-weight: 600; }
+    .value { font-family: monospace; }
+    .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: #ccc; }
+    .other-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+    .other-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1rem 1.25rem; }
+    .other-card h3 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+    .other-card h3 span { font-size: 0.75rem; color: #666; font-weight: 400; margin-left: 0.4rem; }
+    .other-card p { color: #888; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem; }
+    .tips { background: #111; border: 1px solid #222; border-radius: 10px; padding: 1.5rem; }
+    .tips h2 { font-size: 1rem; margin-bottom: 1rem; color: #ccc; }
+    .tip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .tip { font-size: 0.85rem; color: #aaa; line-height: 1.5; }
+    .tip strong { color: #fff; display: block; margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>⚡ Core Web Vitals Reference</h1>
+  <p class="subtitle">Google's page experience metrics and their thresholds</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">🖼️</div>
+      <h2>LCP <span>Largest Contentful Paint</span></h2>
+      <p class="desc">Measures loading performance. Marks when the largest image or text block becomes visible in the viewport.</p>
+      <div class="thresholds">
+        <div class="threshold good"><span class="label">✅ Good</span><span class="value">≤ 2.5s</span></div>
+        <div class="threshold needs-improvement"><span class="label">⚠️ Needs Work</span><span class="value">2.5s – 4.0s</span></div>
+        <div class="threshold poor"><span class="label">❌ Poor</span><span class="value">> 4.0s</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🖱️</div>
+      <h2>INP <span>Interaction to Next Paint</span></h2>
+      <p class="desc">Measures responsiveness. Assesses overall responsiveness to user interactions (replaced FID in March 2024).</p>
+      <div class="thresholds">
+        <div class="threshold good"><span class="label">✅ Good</span><span class="value">≤ 200ms</span></div>
+        <div class="threshold needs-improvement"><span class="label">⚠️ Needs Work</span><span class="value">200ms – 500ms</span></div>
+        <div class="threshold poor"><span class="label">❌ Poor</span><span class="value">> 500ms</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📐</div>
+      <h2>CLS <span>Cumulative Layout Shift</span></h2>
+      <p class="desc">Measures visual stability. Quantifies unexpected layout shifts during the entire lifespan of a page.</p>
+      <div class="thresholds">
+        <div class="threshold good"><span class="label">✅ Good</span><span class="value">≤ 0.1</span></div>
+        <div class="threshold needs-improvement"><span class="label">⚠️ Needs Work</span><span class="value">0.1 – 0.25</span></div>
+        <div class="threshold poor"><span class="label">❌ Poor</span><span class="value">> 0.25</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-title">Other Page Experience Signals</p>
+  <div class="other-grid">
+    <div class="other-card">
+      <h3>FCP <span>First Contentful Paint</span></h3>
+      <p>Time until first text or image is painted. Good: ≤ 1.8s · Needs Work: 1.8s–3s · Poor: >3s</p>
+    </div>
+    <div class="other-card">
+      <h3>TTFB <span>Time to First Byte</span></h3>
+      <p>Server response time. Good: ≤ 800ms · Needs Work: 800ms–1.8s · Poor: >1.8s</p>
+    </div>
+    <div class="other-card">
+      <h3>TBT <span>Total Blocking Time</span></h3>
+      <p>Lab proxy for INP. Sum of blocking time over 50ms. Good: ≤ 200ms · Poor: >600ms</p>
+    </div>
+    <div class="other-card">
+      <h3>Mobile Friendly</h3>
+      <p>Pages must be usable on mobile. Test with Google's Mobile-Friendly Test tool.</p>
+    </div>
+    <div class="other-card">
+      <h3>HTTPS</h3>
+      <p>Secure connection is a confirmed lightweight ranking signal since 2014.</p>
+    </div>
+    <div class="other-card">
+      <h3>No Intrusive Interstitials</h3>
+      <p>Popups that block content on mobile can result in ranking demotion.</p>
+    </div>
+  </div>
+
+  <div class="tips">
+    <h2>💡 Quick Improvement Tips</h2>
+    <div class="tip-grid">
+      <div class="tip"><strong>Improve LCP</strong>Preload hero images, use a CDN, optimize server response times, remove render-blocking resources.</div>
+      <div class="tip"><strong>Improve INP</strong>Break up long JavaScript tasks, use web workers, defer non-critical JS, avoid heavy event listeners.</div>
+      <div class="tip"><strong>Improve CLS</strong>Always set width & height on images/videos, avoid injecting content above existing content, use CSS transform for animations.</div>
+      <div class="tip"><strong>Measure</strong>Use PageSpeed Insights, Chrome DevTools, CrUX dashboard, or Search Console's Core Web Vitals report.</div>
+    </div>
+  </div>
+</body>
+</html>

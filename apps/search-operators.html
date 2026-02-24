@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Search Operators | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; align-items: center; }
+    .search { flex: 1; min-width: 200px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.95rem; outline: none; }
+    .search:focus { border-color: #4285f4; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .filter-btn { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #aaa; font-size: 0.8rem; cursor: pointer; }
+    .filter-btn.active, .filter-btn:hover { background: #4285f4; border-color: #4285f4; color: #fff; }
+    .try-btn { padding: 0.35rem 0.7rem; background: #1a3a5c; border: 1px solid #1e5c99; border-radius: 5px; color: #4dabf7; font-size: 0.75rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+    .try-btn:hover { background: #4285f4; color: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { position: sticky; top: 0; background: #0d0d0d; }
+    th { text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #666; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid #1a1a1a; font-size: 0.88rem; vertical-align: top; }
+    tr:hover td { background: #111; }
+    .operator { font-family: monospace; font-size: 0.9rem; color: #4dabf7; font-weight: 600; }
+    .example { font-family: monospace; font-size: 0.8rem; color: #888; }
+    .cat { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+    .cat-site { background: #1a3a5c; color: #4dabf7; }
+    .cat-content { background: #3a2a1a; color: #f7c04d; }
+    .cat-link { background: #1a2a3a; color: #74c7ec; }
+    .cat-advanced { background: #2a1a3a; color: #c084fc; }
+    .cat-boolean { background: #1a3a2a; color: #4ade80; }
+    .status-works { color: #4ade80; font-size: 0.75rem; }
+    .status-limited { color: #fbbf24; font-size: 0.75rem; }
+    .status-dead { color: #f87171; font-size: 0.75rem; }
+    .no-results { color: #666; padding: 2rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>🔍 Google Search Operators</h1>
+  <p class="subtitle">Complete reference for advanced Google search operators</p>
+
+  <div class="controls">
+    <input class="search" type="text" placeholder="Search operators..." oninput="filterOps(this.value)" />
+    <div class="filters" id="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('site', this)">Site</button>
+      <button class="filter-btn" onclick="setFilter('content', this)">Content</button>
+      <button class="filter-btn" onclick="setFilter('link', this)">Link</button>
+      <button class="filter-btn" onclick="setFilter('boolean', this)">Boolean</button>
+      <button class="filter-btn" onclick="setFilter('advanced', this)">Advanced</button>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Operator</th>
+        <th>Description</th>
+        <th>Example</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="ops-body"></tbody>
+  </table>
+  <div id="no-results" class="no-results" style="display:none;">No operators found.</div>
+
+  <script>
+    const ops = [
+      { op: 'site:', cat: 'site', desc: 'Restrict results to a specific domain or subdomain.', ex: 'site:example.com', status: 'works' },
+      { op: 'site: (subfolder)', cat: 'site', desc: 'Show only pages indexed within a specific folder.', ex: 'site:example.com/blog/', status: 'works' },
+      { op: '-site:', cat: 'site', desc: 'Exclude a specific domain from results.', ex: 'seo tips -site:reddit.com', status: 'works' },
+      { op: 'inurl:', cat: 'site', desc: 'Find pages with a specific word in the URL.', ex: 'inurl:login', status: 'works' },
+      { op: 'allinurl:', cat: 'site', desc: 'All specified words must appear in the URL.', ex: 'allinurl:seo guide 2024', status: 'works' },
+      { op: 'intitle:', cat: 'content', desc: 'Find pages with a specific word in the title tag.', ex: 'intitle:"seo checklist"', status: 'works' },
+      { op: 'allintitle:', cat: 'content', desc: 'All specified words must appear in the title.', ex: 'allintitle:best seo tools', status: 'works' },
+      { op: 'intext:', cat: 'content', desc: 'Find pages with a specific word in the body text.', ex: 'intext:"keyword density"', status: 'works' },
+      { op: 'allintext:', cat: 'content', desc: 'All specified words must appear in the body text.', ex: 'allintext:crawl budget optimization', status: 'works' },
+      { op: 'filetype:', cat: 'content', desc: 'Find files of a specific type.', ex: 'seo audit filetype:pdf', status: 'works' },
+      { op: 'ext:', cat: 'content', desc: 'Alias for filetype:.', ex: 'keyword research ext:xlsx', status: 'works' },
+      { op: '"quotes"', cat: 'content', desc: 'Exact phrase match. Must contain the phrase as written.', ex: '"google search console tips"', status: 'works' },
+      { op: 'related:', cat: 'site', desc: 'Find sites related to a given domain (limited results).', ex: 'related:moz.com', status: 'limited' },
+      { op: 'cache:', cat: 'site', desc: "Show Google's cached version of a page.", ex: 'cache:example.com', status: 'dead' },
+      { op: 'link:', cat: 'link', desc: "Show pages linking to a URL. Officially deprecated by Google.", ex: 'link:example.com', status: 'dead' },
+      { op: 'info:', cat: 'site', desc: 'Show info about a URL. Largely deprecated.', ex: 'info:example.com', status: 'dead' },
+      { op: 'OR', cat: 'boolean', desc: 'Return results matching either term. Must be uppercase.', ex: 'seo OR sem', status: 'works' },
+      { op: 'AND', cat: 'boolean', desc: 'Both terms must appear. Default behavior, but explicit AND is supported.', ex: 'seo AND content marketing', status: 'works' },
+      { op: '- (minus)', cat: 'boolean', desc: 'Exclude a term from results.', ex: 'seo tools -free', status: 'works' },
+      { op: '* (wildcard)', cat: 'boolean', desc: 'Wildcard — matches any word in a phrase.', ex: '"best * for seo"', status: 'works' },
+      { op: '( ) grouping', cat: 'boolean', desc: 'Group terms to control logic with OR/AND.', ex: '(seo OR sem) tools 2024', status: 'works' },
+      { op: '#..# (range)', cat: 'boolean', desc: 'Search within a numeric range.', ex: 'seo tools $50..$200', status: 'works' },
+      { op: 'before:', cat: 'advanced', desc: 'Filter results published before a specific date.', ex: 'google algorithm before:2022-01-01', status: 'works' },
+      { op: 'after:', cat: 'advanced', desc: 'Filter results published after a specific date.', ex: 'core web vitals after:2023-01-01', status: 'works' },
+      { op: 'define:', cat: 'advanced', desc: 'Show the dictionary definition of a word.', ex: 'define:canonicalization', status: 'works' },
+      { op: 'weather:', cat: 'advanced', desc: 'Show weather for a location.', ex: 'weather:new york', status: 'works' },
+      { op: 'map:', cat: 'advanced', desc: 'Show map results for a location.', ex: 'map:austin texas', status: 'works' },
+      { op: 'source:', cat: 'advanced', desc: 'In Google News — find articles from a specific publication.', ex: 'seo news source:searchengineland', status: 'works' },
+      { op: 'loc:', cat: 'advanced', desc: 'Filter results to a specific location (limited support).', ex: 'plumber loc:chicago', status: 'limited' },
+      { op: 'AROUND(n)', cat: 'advanced', desc: 'Two terms must appear within n words of each other.', ex: 'seo AROUND(3) content', status: 'limited' },
+    ];
+
+    const statusLabel = { works: '✅ Works', limited: '⚠️ Limited', dead: '❌ Deprecated' };
+    let currentFilter = 'all';
+    let currentSearch = '';
+
+    function render() {
+      const tbody = document.getElementById('ops-body');
+      const noResults = document.getElementById('no-results');
+      const filtered = ops.filter(o => {
+        const matchCat = currentFilter === 'all' || o.cat === currentFilter;
+        const q = currentSearch.toLowerCase();
+        const matchSearch = !q || o.op.toLowerCase().includes(q) || o.desc.toLowerCase().includes(q) || o.ex.toLowerCase().includes(q);
+        return matchCat && matchSearch;
+      });
+      if (!filtered.length) { tbody.innerHTML = ''; noResults.style.display = 'block'; return; }
+      noResults.style.display = 'none';
+      tbody.innerHTML = filtered.map(o => {
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(o.ex)}`;
+        return `<tr>
+          <td><span class="operator">${o.op}</span><br><span class="cat cat-${o.cat}">${o.cat}</span></td>
+          <td>${o.desc}</td>
+          <td><span class="example">${o.ex}</span></td>
+          <td><span class="status-${o.status}">${statusLabel[o.status]}</span></td>
+          <td><a class="try-btn" href="${searchUrl}" target="_blank" rel="noopener">Try →</a></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setFilter(cat, el) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      currentFilter = cat;
+      render();
+    }
+
+    function filterOps(q) {
+      currentSearch = q;
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>

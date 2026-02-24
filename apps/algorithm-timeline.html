@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Algorithm Timeline | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .search { width: 100%; max-width: 500px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.95rem; margin-bottom: 2rem; outline: none; }
+    .search:focus { border-color: #4285f4; }
+    .year-group { margin-bottom: 2.5rem; }
+    .year-label { font-size: 1.1rem; font-weight: 700; color: #4285f4; margin-bottom: 1rem; padding-left: 1.2rem; border-left: 3px solid #4285f4; }
+    .updates { display: flex; flex-direction: column; gap: 0.75rem; padding-left: 1rem; }
+    .update { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1rem 1.25rem; display: flex; gap: 1rem; align-items: flex-start; }
+    .update:hover { border-color: #444; }
+    .update-date { color: #666; font-size: 0.8rem; min-width: 70px; padding-top: 2px; }
+    .update-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+    .update-desc { color: #999; font-size: 0.85rem; line-height: 1.5; }
+    .tag { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; margin-top: 0.4rem; font-weight: 600; }
+    .tag-core { background: #1a3a5c; color: #4dabf7; }
+    .tag-spam { background: #3a1a1a; color: #f74d4d; }
+    .tag-speed { background: #1a3a2a; color: #4df78a; }
+    .tag-content { background: #3a2a1a; color: #f7c04d; }
+    .tag-local { background: #2a1a3a; color: #c04df7; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>🗓️ Google Algorithm Timeline</h1>
+  <p class="subtitle">Major Google algorithm updates from 2011 to present</p>
+  <input class="search" type="text" placeholder="Search updates..." oninput="filterUpdates(this.value)" />
+  <div id="timeline"></div>
+
+  <script>
+    const updates = [
+      { date: 'Feb 2011', name: 'Panda', desc: 'Targeted low-quality, thin, and duplicate content. Hit content farms hard.', tag: 'content' },
+      { date: 'Apr 2012', name: 'Penguin', desc: 'Targeted spammy backlink profiles and keyword stuffing in links.', tag: 'spam' },
+      { date: 'Aug 2012', name: 'Pirate', desc: 'Targeted sites with high volumes of DMCA copyright infringement notices.', tag: 'spam' },
+      { date: 'Sep 2012', name: 'Exact Match Domain', desc: 'Reduced ranking benefit for exact-match domains with low-quality content.', tag: 'spam' },
+      { date: 'May 2013', name: 'Phantom (Quality)', desc: 'First of several "phantom" updates targeting site quality signals.', tag: 'content' },
+      { date: 'Aug 2013', name: 'Hummingbird', desc: 'Major algorithm rewrite focused on semantic search and conversational queries.', tag: 'core' },
+      { date: 'Jul 2014', name: 'Pigeon', desc: 'Improved local search results, tighter integration with local ranking signals.', tag: 'local' },
+      { date: 'Apr 2015', name: 'Mobilegeddon', desc: 'Boosted mobile-friendly pages in mobile search results.', tag: 'speed' },
+      { date: 'Oct 2015', name: 'RankBrain', desc: 'Machine learning system to help interpret novel search queries.', tag: 'core' },
+      { date: 'Jan 2016', name: 'Phantom 4', desc: 'Another quality update targeting unhelpful or misleading content.', tag: 'content' },
+      { date: 'Sep 2016', name: 'Penguin 4.0', desc: 'Penguin became real-time and part of core algorithm. Devalues spam instead of penalizing.', tag: 'spam' },
+      { date: 'Mar 2017', name: 'Fred', desc: 'Targeted sites violating Google webmaster guidelines, especially ad-heavy low-value content.', tag: 'content' },
+      { date: 'Jul 2018', name: 'Medic', desc: 'Major core update heavily impacting health, medical, and YMYL sites.', tag: 'core' },
+      { date: 'Aug 2018', name: 'E-A-T Update', desc: 'Emphasis on Expertise, Authoritativeness, and Trustworthiness per updated quality rater guidelines.', tag: 'content' },
+      { date: 'Oct 2018', name: 'Mobile Speed Update', desc: 'Page speed became a ranking factor for mobile searches.', tag: 'speed' },
+      { date: 'Mar 2019', name: 'Florida 2', desc: 'Broad core update causing major ranking shifts across many industries.', tag: 'core' },
+      { date: 'Oct 2019', name: 'BERT', desc: 'Natural language processing update to better understand context of words in queries.', tag: 'core' },
+      { date: 'Jan 2020', name: 'January Core Update', desc: 'Broad core update with significant ranking changes across verticals.', tag: 'core' },
+      { date: 'May 2020', name: 'May Core Update', desc: 'One of the largest core updates in years, wide-reaching ranking changes.', tag: 'core' },
+      { date: 'Dec 2020', name: 'December Core Update', desc: 'Broad core update released during holiday season causing notable SERP shifts.', tag: 'core' },
+      { date: 'Jun 2021', name: 'Page Experience / CWV', desc: 'Core Web Vitals became ranking signals. UX metrics including LCP, FID, CLS added.', tag: 'speed' },
+      { date: 'Jul 2021', name: 'Link Spam Update', desc: 'Targeted paid links and other link spam across multiple languages.', tag: 'spam' },
+      { date: 'Nov 2021', name: 'November Core Update', desc: 'Broad core update with large fluctuations in news and health niches.', tag: 'core' },
+      { date: 'Dec 2021', name: 'Product Reviews Update', desc: 'Rewarded in-depth product reviews over thin affiliate content.', tag: 'content' },
+      { date: 'May 2022', name: 'Helpful Content (Beta)', desc: 'Initial rollout targeting content written for search engines rather than people.', tag: 'content' },
+      { date: 'Sep 2022', name: 'Helpful Content Update', desc: 'Full rollout of people-first content ranking signal as a sitewide signal.', tag: 'content' },
+      { date: 'Oct 2022', name: 'Spam Update', desc: 'Targeted spammy content and cloaking techniques globally.', tag: 'spam' },
+      { date: 'Feb 2023', name: 'February Core Update', desc: 'Broad core update with significant volatility across verticals.', tag: 'core' },
+      { date: 'Apr 2023', name: 'Reviews Update', desc: 'Expanded product reviews update to cover all review content, not just products.', tag: 'content' },
+      { date: 'Aug 2023', name: 'August Core Update', desc: 'Large core update; significant recovery for sites hit by Helpful Content.', tag: 'core' },
+      { date: 'Sep 2023', name: 'Helpful Content Update', desc: 'Major update to helpful content system; widely considered most impactful HCU.', tag: 'content' },
+      { date: 'Nov 2023', name: 'November Core Update', desc: 'Broad core update running alongside a simultaneous reviews update.', tag: 'core' },
+      { date: 'Mar 2024', name: 'March Core Update', desc: 'Largest core update ever per Google. Targeted scaled content abuse and site reputation abuse.', tag: 'core' },
+      { date: 'Mar 2024', name: 'Spam Policies Update', desc: 'New spam policies targeting expired domain abuse, scaled content abuse, and site reputation abuse.', tag: 'spam' },
+      { date: 'Aug 2024', name: 'August Core Update', desc: 'Aimed to better surface content from small and independent sites.', tag: 'core' },
+      { date: 'Nov 2024', name: 'November Core Update', desc: 'Broad core update with continued volatility for content-heavy and affiliate sites.', tag: 'core' },
+    ];
+
+    const tagLabels = { core: 'Core', spam: 'Spam', speed: 'Speed/UX', content: 'Content', local: 'Local' };
+
+    function groupByYear(items) {
+      return items.reduce((acc, u) => {
+        const year = u.date.split(' ')[1];
+        (acc[year] = acc[year] || []).push(u);
+        return acc;
+      }, {});
+    }
+
+    function render(items) {
+      const container = document.getElementById('timeline');
+      if (!items.length) { container.innerHTML = '<p style="color:#666;">No updates found.</p>'; return; }
+      const grouped = groupByYear(items);
+      container.innerHTML = Object.keys(grouped).sort((a,b) => b-a).map(year => `
+        <div class="year-group">
+          <div class="year-label">${year}</div>
+          <div class="updates">
+            ${grouped[year].map(u => `
+              <div class="update">
+                <div class="update-date">${u.date.split(' ')[0]}</div>
+                <div>
+                  <div class="update-name">${u.name}</div>
+                  <div class="update-desc">${u.desc}</div>
+                  <span class="tag tag-${u.tag}">${tagLabels[u.tag]}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterUpdates(q) {
+      const filtered = updates.filter(u =>
+        u.name.toLowerCase().includes(q.toLowerCase()) ||
+        u.desc.toLowerCase().includes(q.toLowerCase()) ||
+        u.date.toLowerCase().includes(q.toLowerCase())
+      );
+      render(filtered);
+    }
+
+    render(updates);
+  </script>
+</body>
+</html>
