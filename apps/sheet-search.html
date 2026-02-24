@@ -12,7 +12,6 @@
     h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
     .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
 
-    /* Load panel */
     .load-panel { background: #111; border: 1px solid #222; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
     .load-panel h2 { font-size: 1rem; margin-bottom: 1rem; color: #aaa; font-weight: 500; }
     .load-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
@@ -28,82 +27,72 @@
     #status-msg.error { color: #e05; }
     #status-msg.ok { color: #4c4; }
 
-    /* Filters */
-    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .filters input[type="text"] { flex: 1; min-width: 200px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.9rem; font-size: 0.9rem; }
-    .filters input[type="text"]::placeholder { color: #555; }
-    .filters select { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.75rem; font-size: 0.85rem; cursor: pointer; }
-    .filters select option { background: #1a1a1a; }
-    .filter-info { font-size: 0.82rem; color: #555; align-self: center; margin-left: auto; white-space: nowrap; }
-    button#clear-btn { background: none; border: 1px solid #333; color: #888; border-radius: 6px; padding: 0.5rem 0.9rem; font-size: 0.85rem; cursor: pointer; }
+    .filters-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+    .filters-bar input[type="text"] { flex: 1; min-width: 200px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.9rem; font-size: 0.9rem; }
+    .filters-bar input[type="text"]::placeholder { color: #555; }
+    .filters-bar select { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.6rem; font-size: 0.82rem; cursor: pointer; max-width: 160px; }
+    .filter-count { font-size: 0.82rem; color: #555; white-space: nowrap; margin-left: auto; }
+    button#clear-btn { background: none; border: 1px solid #333; color: #888; border-radius: 6px; padding: 0.5rem 0.9rem; font-size: 0.82rem; cursor: pointer; }
     button#clear-btn:hover { border-color: #666; color: #fff; }
 
-    /* Table */
+    .col-toggle { background: #111; border: 1px solid #222; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; }
+    .col-toggle summary { cursor: pointer; color: #888; user-select: none; }
+    .col-toggle summary:hover { color: #fff; }
+    .col-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+    .col-pill { display: inline-flex; align-items: center; gap: 0.3rem; background: #1a1a1a; border: 1px solid #333; border-radius: 99px; padding: 0.25rem 0.6rem; font-size: 0.78rem; cursor: pointer; user-select: none; }
+    .col-pill.active { background: #1a3355; border-color: #428bca; color: #7bc; }
+    .col-pill:hover { border-color: #555; }
+
     .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #222; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 700px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
     thead tr { background: #161616; }
-    th { padding: 0.7rem 1rem; text-align: left; color: #aaa; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #222; white-space: nowrap; }
+    th { padding: 0.65rem 0.9rem; text-align: left; color: #aaa; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #222; white-space: nowrap; cursor: pointer; }
+    th:hover { color: #fff; }
     tbody tr { border-bottom: 1px solid #1a1a1a; transition: background 0.1s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #161616; }
-    td { padding: 0.65rem 1rem; vertical-align: top; color: #ccc; }
-    td.url a { color: #428bca; text-decoration: none; font-size: 0.8rem; max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    td.url a:hover { text-decoration: underline; }
-    td.msv { color: #fff; font-variant-numeric: tabular-nums; }
-    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
-    .badge.phase-tofu { background: #1a3a1a; color: #5c5; }
-    .badge.phase-mofu { background: #1a2f3a; color: #5af; }
-    .badge.phase-bofu { background: #3a1a1a; color: #f55; }
-    .badge.phase-other { background: #222; color: #888; }
+    td { padding: 0.6rem 0.9rem; vertical-align: top; color: #ccc; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td a { color: #428bca; text-decoration: none; }
+    td a:hover { text-decoration: underline; }
     .empty { text-align: center; padding: 3rem; color: #555; }
     #placeholder { text-align: center; padding: 4rem 2rem; color: #444; }
     #placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
-    #placeholder p { font-size: 0.95rem; }
   </style>
 </head>
 <body>
   <a href="../index.html" class="back">← Back</a>
   <h1>Sheet Search</h1>
-  <p class="subtitle">Load your Google Sheet data and search/filter it instantly.</p>
+  <p class="subtitle">Load your Google Sheet or CSV and search/filter every column.</p>
 
   <div class="load-panel">
     <h2>Load data</h2>
     <div class="load-row">
-      <input type="text" id="sheet-url" placeholder="Paste Google Sheet published CSV URL…" />
+      <input type="text" id="sheet-url" placeholder="Paste Google Sheet URL (any format)…" />
       <button class="btn" onclick="loadFromURL()">Fetch Sheet</button>
       <span class="or">or</span>
       <label class="btn secondary">Upload CSV <input type="file" id="csv-file" accept=".csv" onchange="loadFromFile(this)" /></label>
     </div>
     <div id="status-msg"></div>
     <div style="margin-top:0.9rem; font-size:0.8rem; color:#555;">
-      💡 Just paste any Google Sheet URL — set sharing to <strong>"Anyone with the link can view"</strong> and the app handles the rest. No need to publish.
+      💡 Paste any Google Sheet URL — set sharing to <strong>"Anyone with the link can view"</strong> or publish as CSV. The app reads your actual column headers automatically.
     </div>
   </div>
 
   <div id="app" style="display:none;">
-    <div class="filters">
-      <input type="text" id="search" placeholder="Search keywords, titles, URLs…" oninput="applyFilters()" />
-      <select id="f-cluster" onchange="applyFilters()"><option value="">All Clusters</option></select>
-      <select id="f-products" onchange="applyFilters()"><option value="">All Products</option></select>
-      <select id="f-bu" onchange="applyFilters()"><option value="">All Business Units</option></select>
-      <select id="f-phase" onchange="applyFilters()"><option value="">All Buying Phases</option></select>
-      <span class="filter-info" id="result-count"></span>
+    <details class="col-toggle" id="col-picker">
+      <summary>⚙️ Choose visible columns (<span id="col-count">0</span> shown)</summary>
+      <div class="col-pills" id="col-pills"></div>
+    </details>
+
+    <div class="filters-bar" id="filters-bar">
+      <input type="text" id="search" placeholder="Search all columns…" oninput="applyFilters()" />
+      <span class="filter-count" id="result-count"></span>
       <button id="clear-btn" onclick="clearFilters()">Clear</button>
     </div>
+
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>URL</th>
-            <th>Keyword Cluster</th>
-            <th>Target Keyword</th>
-            <th>MSV</th>
-            <th>Products</th>
-            <th>Business Units</th>
-            <th>Buying Phase</th>
-            <th>Date</th>
-          </tr>
-        </thead>
+        <thead id="tbl-head"></thead>
         <tbody id="tbl-body"></tbody>
       </table>
     </div>
@@ -115,32 +104,7 @@
   </div>
 
   <script>
-    // Column map — resolved dynamically from headers
-    const COL_NAMES = {
-      url:      ['permalink', 'url', 'link'],
-      cluster:  ['keyword cluster', 'cluster'],
-      kw:       ['target keyword'],
-      msv:      ['msv', 'search volume', 'monthly search'],
-      products: ['products'],
-      bu:       ['business units', 'business unit'],
-      phase:    ['buying phase'],
-      date:     ['date']
-    };
-    let COLS = { url: 0, cluster: 1, kw: 2, msv: 3, products: 7, bu: 8, phase: 10, date: 17 };
-
-    let allRows = [];
-
-    function resolveColumns(headers) {
-      const h = headers.map(v => v.toLowerCase().trim());
-      const resolved = {};
-      for (const [key, candidates] of Object.entries(COL_NAMES)) {
-        const idx = h.findIndex(col => candidates.some(c => col.includes(c)));
-        resolved[key] = idx >= 0 ? idx : COLS[key];
-      }
-      COLS = resolved;
-      console.log('Headers:', h);
-      console.log('Resolved COLS:', COLS);
-    }
+    let allRows = [], headers = [], visibleCols = [], activeFilters = {};
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status-msg');
@@ -150,7 +114,7 @@
 
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
-      const rows = lines.map(line => {
+      return lines.map(line => {
         const cells = [];
         let cur = '', inQ = false;
         for (let i = 0; i < line.length; i++) {
@@ -162,40 +126,116 @@
         cells.push(cur.trim());
         return cells;
       });
-      return rows;
+    }
+
+    function toCSVExportURL(input) {
+      if (input.includes('output=csv') || input.includes('format=csv')) return input;
+      if (input.match(/\/spreadsheets\/d\/e\//)) {
+        return input + (input.includes('?') ? '&' : '?') + 'output=csv';
+      }
+      const idMatch = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
+      if (idMatch) {
+        const gidMatch = input.match(/[#&?]gid=(\d+)/);
+        return `https://docs.google.com/spreadsheets/d/${idMatch[1]}/export?format=csv&gid=${gidMatch ? gidMatch[1] : '0'}`;
+      }
+      return input;
     }
 
     function loadData(text, source) {
       const rows = parseCSV(text);
-      if (rows.length < 2) { setStatus('No data found in file.', 'error'); return; }
-      resolveColumns(rows[0]);
-      allRows = rows.slice(1); // skip header
-      populateFilters();
+      if (rows.length < 2) { setStatus('No data found.', 'error'); return; }
+      headers = rows[0];
+      allRows = rows.slice(1);
+      // Default: show first 10 columns
+      visibleCols = headers.map((_, i) => i).slice(0, 10);
+      activeFilters = {};
+      buildColPicker();
+      buildFilterDropdowns();
       applyFilters();
       document.getElementById('app').style.display = '';
       document.getElementById('placeholder').style.display = 'none';
-      setStatus(`✓ Loaded ${allRows.length} rows from ${source}`, 'ok');
+      setStatus(`✓ Loaded ${allRows.length} rows · ${headers.length} columns from ${source}`, 'ok');
     }
 
-    function toCSVExportURL(input) {
-      // Already has CSV output — use as-is
-      if (input.includes('output=csv') || input.includes('format=csv')) return input;
+    function buildColPicker() {
+      const pills = document.getElementById('col-pills');
+      pills.innerHTML = headers.map((h, i) => `
+        <span class="col-pill ${visibleCols.includes(i) ? 'active' : ''}" onclick="toggleCol(${i})" id="pill-${i}">${h || `Col ${i+1}`}</span>
+      `).join('');
+      updateColCount();
+    }
 
-      // "Publish to web" URL without output param
-      if (input.match(/\/spreadsheets\/d\/e\//)) {
-        return input.replace(/output=[a-z]+/, 'output=csv') + (input.includes('?') ? '&output=csv' : '?output=csv');
+    function toggleCol(i) {
+      if (visibleCols.includes(i)) {
+        if (visibleCols.length === 1) return; // keep at least 1
+        visibleCols = visibleCols.filter(c => c !== i);
+      } else {
+        visibleCols = [...visibleCols, i].sort((a,b) => a-b);
+      }
+      document.getElementById(`pill-${i}`).classList.toggle('active');
+      updateColCount();
+      renderTable(getFiltered());
+    }
+
+    function updateColCount() {
+      document.getElementById('col-count').textContent = visibleCols.length;
+    }
+
+    // Build dropdown filters for low-cardinality text columns
+    function buildFilterDropdowns() {
+      const bar = document.getElementById('filters-bar');
+      // Remove old dropdowns
+      bar.querySelectorAll('select').forEach(s => s.remove());
+      const insertBefore = document.getElementById('result-count');
+
+      headers.forEach((h, i) => {
+        const vals = [...new Set(allRows.map(r => (r[i] || '').trim()))].filter(v => v && isNaN(v));
+        if (vals.length >= 2 && vals.length <= 80) {
+          const sel = document.createElement('select');
+          sel.dataset.col = i;
+          sel.innerHTML = `<option value="">All ${h}</option>` + vals.sort().map(v => `<option value="${v}">${v}</option>`).join('');
+          sel.addEventListener('change', () => { activeFilters[i] = sel.value; applyFilters(); });
+          bar.insertBefore(sel, insertBefore);
+        }
+      });
+    }
+
+    function getFiltered() {
+      const q = (document.getElementById('search').value || '').toLowerCase();
+      return allRows.filter(r => {
+        if (q && !r.some(cell => (cell || '').toLowerCase().includes(q))) return false;
+        for (const [col, val] of Object.entries(activeFilters)) {
+          if (val && (r[col] || '').trim() !== val) return false;
+        }
+        return true;
+      });
+    }
+
+    function applyFilters() {
+      const filtered = getFiltered();
+      document.getElementById('result-count').textContent = `${filtered.length} of ${allRows.length}`;
+      renderTable(filtered);
+    }
+
+    function renderTable(rows) {
+      const esc = v => (v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const isURL = v => /^https?:\/\//i.test(v);
+
+      document.getElementById('tbl-head').innerHTML = '<tr>' +
+        visibleCols.map(i => `<th>${esc(headers[i] || `Col ${i+1}`)}</th>`).join('') + '</tr>';
+
+      if (!rows.length) {
+        document.getElementById('tbl-body').innerHTML = `<tr><td colspan="${visibleCols.length}" class="empty">No results.</td></tr>`;
+        return;
       }
 
-      // Regular Google Sheet share URL
-      const idMatch = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
-      if (idMatch) {
-        const sheetId = idMatch[1];
-        const gidMatch = input.match(/[#&?]gid=(\d+)/);
-        const gid = gidMatch ? gidMatch[1] : '0';
-        return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-      }
-
-      return input;
+      document.getElementById('tbl-body').innerHTML = rows.slice(0, 500).map(r =>
+        '<tr>' + visibleCols.map(i => {
+          const v = r[i] || '';
+          const cell = isURL(v) ? `<a href="${esc(v)}" target="_blank" rel="noopener" title="${esc(v)}">${esc(v)}</a>` : esc(v);
+          return `<td title="${esc(v)}">${cell}</td>`;
+        }).join('') + '</tr>'
+      ).join('');
     }
 
     async function loadFromURL() {
@@ -204,96 +244,27 @@
       const url = toCSVExportURL(raw);
       setStatus('Fetching…');
       try {
-        const proxy = `https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`;
-        const res = await fetch(proxy);
+        const res = await fetch(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`);
         const data = await res.json();
         if (!data.contents || data.contents.trim().startsWith('<')) throw new Error('Got HTML — check sharing settings');
         loadData(data.contents, 'Google Sheets');
       } catch(e) {
-        setStatus(`Failed: ${e.message}. Make sure sharing is set to "Anyone with the link can view".`, 'error');
+        setStatus(`Failed: ${e.message}`, 'error');
       }
     }
 
     function loadFromFile(input) {
       const file = input.files[0];
       if (!file) return;
-      setStatus('Reading file…');
       const reader = new FileReader();
       reader.onload = e => loadData(e.target.result, file.name);
       reader.readAsText(file);
     }
 
-    function getUnique(col) {
-      const vals = new Set();
-      allRows.forEach(r => { const v = (r[col] || '').trim(); if (v) v.split(/[,;]/).forEach(x => { const t = x.trim(); if (t) vals.add(t); }); });
-      return [...vals].sort();
-    }
-
-    function populateFilters() {
-      fillSelect('f-cluster', getUnique(COLS.cluster), 'All Clusters');
-      fillSelect('f-products', getUnique(COLS.products), 'All Products');
-      fillSelect('f-bu', getUnique(COLS.bu), 'All Business Units');
-      fillSelect('f-phase', getUnique(COLS.phase), 'All Buying Phases');
-    }
-
-    function fillSelect(id, opts, placeholder) {
-      const sel = document.getElementById(id);
-      sel.innerHTML = `<option value="">${placeholder}</option>` + opts.map(o => `<option value="${o}">${o}</option>`).join('');
-    }
-
-    function phaseBadge(phase) {
-      const p = (phase || '').toLowerCase();
-      let cls = 'phase-other';
-      if (p.includes('tofu') || p.includes('aware')) cls = 'phase-tofu';
-      else if (p.includes('mofu') || p.includes('consid')) cls = 'phase-mofu';
-      else if (p.includes('bofu') || p.includes('decis') || p.includes('purch')) cls = 'phase-bofu';
-      return phase ? `<span class="badge ${cls}">${phase}</span>` : '';
-    }
-
-    function applyFilters() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const cluster = document.getElementById('f-cluster').value;
-      const products = document.getElementById('f-products').value;
-      const bu = document.getElementById('f-bu').value;
-      const phase = document.getElementById('f-phase').value;
-
-      const filtered = allRows.filter(r => {
-        if (q && !Object.values(COLS).some(i => (r[i] || '').toLowerCase().includes(q))) return false;
-        if (cluster && !(r[COLS.cluster] || '').includes(cluster)) return false;
-        if (products && !(r[COLS.products] || '').includes(products)) return false;
-        if (bu && !(r[COLS.bu] || '').includes(bu)) return false;
-        if (phase && !(r[COLS.phase] || '').includes(phase)) return false;
-        return true;
-      });
-
-      document.getElementById('result-count').textContent = `${filtered.length} of ${allRows.length} rows`;
-
-      const tbody = document.getElementById('tbl-body');
-      if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty">No results match your filters.</td></tr>`;
-        return;
-      }
-
-      const msv = (v) => { const n = parseInt((v || '').replace(/,/g, '')); return isNaN(n) ? '' : n.toLocaleString(); };
-      const dateShort = (v) => { if (!v) return ''; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); };
-      const esc = (v) => (v || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-      tbody.innerHTML = filtered.slice(0, 500).map(r => `
-        <tr>
-          <td class="url"><a href="${esc(r[COLS.url])}" target="_blank" rel="noopener" title="${esc(r[COLS.url])}">${esc(r[COLS.url]) || '—'}</a></td>
-          <td>${esc(r[COLS.cluster]) || '—'}</td>
-          <td>${esc(r[COLS.kw]) || '—'}</td>
-          <td class="msv">${msv(r[COLS.msv]) || '—'}</td>
-          <td>${esc(r[COLS.products]) || '—'}</td>
-          <td>${esc(r[COLS.bu]) || '—'}</td>
-          <td>${phaseBadge(r[COLS.phase]) || '—'}</td>
-          <td>${dateShort(r[COLS.date]) || '—'}</td>
-        </tr>`).join('');
-    }
-
     function clearFilters() {
       document.getElementById('search').value = '';
-      ['f-cluster','f-products','f-bu','f-phase'].forEach(id => document.getElementById(id).value = '');
+      activeFilters = {};
+      document.querySelectorAll('#filters-bar select').forEach(s => s.value = '');
       applyFilters();
     }
   </script>
