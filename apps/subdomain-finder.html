@@ -138,8 +138,26 @@
       try {
         const res = await fetch(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent('https://crt.sh/?q=%25.' + input + '&output=json')}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = JSON.parse(JSON.stringify(await res.json()));
-        const certs = JSON.parse(data.contents);
+        const data = await res.json();
+        const raw = data.contents || '';
+
+        // crt.sh often returns HTML error pages (502, 503) instead of JSON
+        if (raw.trim().startsWith('<') || raw.trim().startsWith('error')) {
+          status.style.color = '#fbbf24';
+          status.textContent = '⚠ crt.sh is temporarily overloaded — wait a moment and try again';
+          btn.disabled = false;
+          btn.textContent = 'Find Subdomains';
+          return;
+        }
+
+        let certs;
+        try { certs = JSON.parse(raw); } catch (e) {
+          status.style.color = '#fbbf24';
+          status.textContent = '⚠ crt.sh returned an invalid response — try again in a few seconds';
+          btn.disabled = false;
+          btn.textContent = 'Find Subdomains';
+          return;
+        }
 
         if (!Array.isArray(certs) || certs.length === 0) {
           status.style.color = '#fbbf24';
