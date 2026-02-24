@@ -200,11 +200,13 @@
 
       filterColIdxs.forEach(i => {
         const h = headers[i];
-        const vals = [...new Set(allRows.map(r => (r[i] || '').trim()))].filter(v => v);
-        if (!vals.length) return;
+        const vals = [...new Set(allRows.map(r => (r[i] || '').trim()))]
+          .filter(v => v && isNaN(v)) // exclude blank and purely numeric
+          .sort();
+        if (!vals.length || vals.length > 150) return; // skip high-cardinality cols
         const sel = document.createElement('select');
         sel.dataset.col = i;
-        sel.innerHTML = `<option value="">All ${h}</option>` + vals.sort().map(v => `<option value="${v}">${v}</option>`).join('');
+        sel.innerHTML = `<option value="">All ${h}</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
         sel.addEventListener('change', () => { activeFilters[i] = sel.value; applyFilters(); });
         bar.insertBefore(sel, insertBefore);
       });
