@@ -115,11 +115,30 @@
   </div>
 
   <script>
-    // Column indices (0-based) matching the headers described
-    // A=0, B=1, C=2, D=3, H=7, I=8, K=10, R=17
-    const COLS = { url: 0, cluster: 1, kw: 2, msv: 3, products: 7, bu: 8, phase: 10, date: 17 };
+    // Column map — resolved dynamically from headers
+    const COL_NAMES = {
+      url:      ['permalink', 'url', 'link'],
+      cluster:  ['keyword cluster', 'cluster'],
+      kw:       ['target keyword', 'keyword'],
+      msv:      ['msv', 'search volume', 'monthly search'],
+      products: ['products', 'product'],
+      bu:       ['business unit', 'business units'],
+      phase:    ['buying phase', 'funnel stage', 'phase'],
+      date:     ['date']
+    };
+    let COLS = { url: 0, cluster: 1, kw: 2, msv: 3, products: 7, bu: 8, phase: 10, date: 17 };
 
     let allRows = [];
+
+    function resolveColumns(headers) {
+      const h = headers.map(v => v.toLowerCase().trim());
+      const resolved = {};
+      for (const [key, candidates] of Object.entries(COL_NAMES)) {
+        const idx = h.findIndex(col => candidates.some(c => col.includes(c)));
+        resolved[key] = idx >= 0 ? idx : COLS[key]; // fallback to hardcoded
+      }
+      COLS = resolved;
+    }
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status-msg');
@@ -147,6 +166,7 @@
     function loadData(text, source) {
       const rows = parseCSV(text);
       if (rows.length < 2) { setStatus('No data found in file.', 'error'); return; }
+      resolveColumns(rows[0]);
       allRows = rows.slice(1); // skip header
       populateFilters();
       applyFilters();
