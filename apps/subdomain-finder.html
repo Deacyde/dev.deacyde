@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subdomain Finder | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .input-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .domain-input { flex: 1; min-width: 200px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none; }
+    .domain-input:focus { border-color: #4285f4; }
+    .domain-input::placeholder { color: #555; }
+    .btn { padding: 0.65rem 1.5rem; background: #4285f4; border: none; border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #3367d6; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-clear { padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.9rem; cursor: pointer; }
+    .btn-clear:hover { color: #fff; border-color: #666; }
+    .btn-export { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #aaa; font-size: 0.8rem; cursor: pointer; }
+    .btn-export:hover { color: #fff; border-color: #666; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 700; }
+    .stat-label { font-size: 0.78rem; color: #888; margin-top: 0.25rem; }
+    .stat-total .stat-num { color: #fff; }
+    .stat-unique .stat-num { color: #4ade80; }
+    .stat-wildcard .stat-num { color: #fbbf24; }
+    .stat-expired .stat-num { color: #f87171; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+    .filter-btn { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #aaa; font-size: 0.8rem; cursor: pointer; }
+    .filter-btn.active, .filter-btn:hover { background: #4285f4; border-color: #4285f4; color: #fff; }
+    .search-small { padding: 0.4rem 0.75rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 0.82rem; outline: none; margin-left: auto; min-width: 180px; }
+    .search-small:focus { border-color: #4285f4; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.65rem 1rem; font-size: 0.78rem; color: #666; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 0.05em; background: #0d0d0d; position: sticky; top: 0; cursor: pointer; }
+    th:hover { color: #aaa; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a1a; vertical-align: middle; word-break: break-all; }
+    tr:hover td { background: #111; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+    .badge-active { background: #14532d; color: #4ade80; }
+    .badge-expired { background: #3b1111; color: #f87171; }
+    .badge-wildcard { background: #3a2a00; color: #fbbf24; }
+    .empty { text-align: center; color: #555; padding: 3rem; }
+    .status-msg { font-size: 0.82rem; color: #888; margin-bottom: 0.75rem; min-height: 1.2rem; }
+    .subdomain-text { color: #4dabf7; }
+    .issuer-text { color: #aaa; font-size: 0.8rem; }
+    .date-text { color: #999; font-size: 0.8rem; }
+    @media (max-width: 600px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .filters { flex-direction: column; align-items: stretch; }
+      .search-small { margin-left: 0; min-width: 100%; }
+      td, th { padding: 0.5rem 0.5rem; font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>🔍 Subdomain Finder</h1>
+  <p class="subtitle">Discover subdomains using Certificate Transparency logs from crt.sh</p>
+
+  <div class="input-row">
+    <input class="domain-input" id="domain-input" type="text" placeholder="Enter a domain (e.g. example.com)" />
+    <button class="btn" id="find-btn" onclick="findSubdomains()">Find Subdomains</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+  <div id="status" class="status-msg"></div>
+
+  <div id="results" style="display:none;">
+    <div class="stats">
+      <div class="stat stat-total"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total Certs</div></div>
+      <div class="stat stat-unique"><div class="stat-num" id="s-unique">0</div><div class="stat-label">Unique Subdomains</div></div>
+      <div class="stat stat-wildcard"><div class="stat-num" id="s-wildcard">0</div><div class="stat-label">Wildcard Entries</div></div>
+      <div class="stat stat-expired"><div class="stat-num" id="s-expired">0</div><div class="stat-label">Expired Certs</div></div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('active',this)">Active</button>
+      <button class="filter-btn" onclick="setFilter('expired',this)">Expired</button>
+      <button class="filter-btn" onclick="setFilter('wildcard',this)">Wildcards</button>
+      <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+      <input class="search-small" type="text" placeholder="Filter subdomains..." oninput="filterSearch(this.value)" />
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('subdomain')">#</th>
+          <th onclick="sortBy('subdomain')">Subdomain ▾</th>
+          <th onclick="sortBy('issuer')">Issuer (CA)</th>
+          <th onclick="sortBy('not_before')">Not Before</th>
+          <th onclick="sortBy('not_after')">Not After</th>
+          <th onclick="sortBy('status')">Status</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="no-results" class="empty" style="display:none;">No subdomains match filter.</div>
+  </div>
+
+  <script>
+    let allEntries = [];
+    let currentFilter = 'all';
+    let currentSearch = '';
+    let currentSort = 'subdomain';
+    let sortAsc = true;
+
+    document.getElementById('domain-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') findSubdomains();
+    });
+
+    function isValidDomain(d) {
+      return /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(d);
+    }
+
+    async function findSubdomains() {
+      const input = document.getElementById('domain-input').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      const status = document.getElementById('status');
+      const btn = document.getElementById('find-btn');
+
+      if (!input || !isValidDomain(input)) {
+        status.style.color = '#f87171';
+        status.textContent = '❌ Please enter a valid domain (e.g. example.com)';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Searching...';
+      status.style.color = '#888';
+      status.textContent = '⏳ Querying Certificate Transparency logs...';
+      document.getElementById('results').style.display = 'none';
+      allEntries = [];
+
+      try {
+        const res = await fetch(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent('https://crt.sh/?q=%25.' + input + '&output=json')}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = JSON.parse(JSON.stringify(await res.json()));
+        const certs = JSON.parse(data.contents);
+
+        if (!Array.isArray(certs) || certs.length === 0) {
+          status.style.color = '#fbbf24';
+          status.textContent = '⚠ No certificate records found for ' + input;
+          btn.disabled = false;
+          btn.textContent = 'Find Subdomains';
+          return;
+        }
+
+        const now = new Date();
+        allEntries = [];
+
+        certs.forEach(cert => {
+          const names = (cert.name_value || '').split(/\n/);
+          names.forEach(name => {
+            const sub = name.trim().toLowerCase();
+            if (!sub) return;
+            const notBefore = cert.not_before || '';
+            const notAfter = cert.not_after || '';
+            const isExpired = notAfter ? new Date(notAfter) < now : false;
+            const isWildcard = sub.startsWith('*.');
+            const issuer = cert.issuer_name || '';
+            // Extract readable CA name
+            const caMatch = issuer.match(/O=([^,]+)/);
+            const ca = caMatch ? caMatch[1].trim() : issuer.substring(0, 40);
+
+            allEntries.push({
+              subdomain: sub,
+              issuer: ca,
+              not_before: notBefore,
+              not_after: notAfter,
+              isExpired,
+              isWildcard,
+              status: isExpired ? 'expired' : 'active'
+            });
+          });
+        });
+
+        // Sort by subdomain by default
+        allEntries.sort((a, b) => a.subdomain.localeCompare(b.subdomain));
+
+        const uniqueSubs = new Set(allEntries.map(e => e.subdomain));
+        const wildcardCount = allEntries.filter(e => e.isWildcard).length;
+        const expiredCount = allEntries.filter(e => e.isExpired).length;
+
+        document.getElementById('s-total').textContent = allEntries.length;
+        document.getElementById('s-unique').textContent = uniqueSubs.size;
+        document.getElementById('s-wildcard').textContent = wildcardCount;
+        document.getElementById('s-expired').textContent = expiredCount;
+
+        document.getElementById('results').style.display = 'block';
+        status.style.color = '#4ade80';
+        status.textContent = `✅ Found ${uniqueSubs.size} unique subdomains across ${allEntries.length} certificate entries`;
+        currentSort = 'subdomain';
+        sortAsc = true;
+        renderTable();
+      } catch (e) {
+        status.style.color = '#f87171';
+        status.textContent = '❌ Failed to fetch data — ' + (e.message || 'network error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Find Subdomains';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('results-body');
+      const noResults = document.getElementById('no-results');
+
+      let filtered = allEntries.filter(e => {
+        if (currentFilter === 'active' && e.isExpired) return false;
+        if (currentFilter === 'expired' && !e.isExpired) return false;
+        if (currentFilter === 'wildcard' && !e.isWildcard) return false;
+        if (currentSearch) {
+          const q = currentSearch.toLowerCase();
+          if (!e.subdomain.includes(q) && !e.issuer.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = '';
+        noResults.style.display = 'block';
+        return;
+      }
+      noResults.style.display = 'none';
+
+      // Limit rendering for performance
+      const maxRender = 2000;
+      const display = filtered.slice(0, maxRender);
+
+      tbody.innerHTML = display.map((e, i) => {
+        const statusBadge = e.isExpired
+          ? '<span class="badge badge-expired">Expired</span>'
+          : '<span class="badge badge-active">Active</span>';
+        const wildcardBadge = e.isWildcard ? ' <span class="badge badge-wildcard">*</span>' : '';
+        return `<tr>
+          <td style="color:#555">${i + 1}</td>
+          <td><span class="subdomain-text">${escapeHtml(e.subdomain)}</span>${wildcardBadge}</td>
+          <td class="issuer-text">${escapeHtml(e.issuer)}</td>
+          <td class="date-text">${formatDate(e.not_before)}</td>
+          <td class="date-text">${formatDate(e.not_after)}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+      }).join('');
+
+      if (filtered.length > maxRender) {
+        tbody.innerHTML += `<tr><td colspan="6" style="text-align:center;color:#888;padding:1rem;">Showing ${maxRender} of ${filtered.length} entries. Use the filter to narrow results.</td></tr>`;
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function formatDate(d) {
+      if (!d) return '—';
+      try {
+        return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch { return d; }
+    }
+
+    function sortBy(col) {
+      if (currentSort === col) {
+        sortAsc = !sortAsc;
+      } else {
+        currentSort = col;
+        sortAsc = true;
+      }
+      const dir = sortAsc ? 1 : -1;
+      allEntries.sort((a, b) => {
+        let va = a[col] || '', vb = b[col] || '';
+        if (col === 'not_before' || col === 'not_after') {
+          return dir * (new Date(va) - new Date(vb));
+        }
+        return dir * String(va).localeCompare(String(vb));
+      });
+      renderTable();
+    }
+
+    function setFilter(f, el) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      currentFilter = f;
+      renderTable();
+    }
+
+    function filterSearch(q) {
+      currentSearch = q;
+      renderTable();
+    }
+
+    function exportCSV() {
+      if (!allEntries.length) return;
+      const rows = [['Subdomain', 'Issuer', 'Not Before', 'Not After', 'Status']];
+      allEntries.forEach(e => {
+        rows.push([e.subdomain, e.issuer, e.not_before, e.not_after, e.status]);
+      });
+      const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'subdomains.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function clearAll() {
+      document.getElementById('domain-input').value = '';
+      document.getElementById('status').textContent = '';
+      document.getElementById('results').style.display = 'none';
+      allEntries = [];
+      currentFilter = 'all';
+      currentSearch = '';
+      document.querySelectorAll('.filter-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+    }
+  </script>
+</body>
+</html>
