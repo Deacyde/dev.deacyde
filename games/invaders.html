@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Invaders | Deacyde.com</title>
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{--bg:#0a0a0f;--surface:#1a1a24;--border:#2a2a3a;--text:#e4e4ed;--text-muted:#9494a8;--accent:#6c63ff;--font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+        body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+        .page-layout{display:flex;align-items:flex-start;justify-content:center;gap:2rem;width:100%;padding:1rem}
+        .game-wrapper{display:flex;flex-direction:column;align-items:center;gap:.75rem;flex-shrink:0}
+        .top-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:480px;padding:0 .25rem}
+        .top-bar a{color:var(--accent);text-decoration:none;font-size:.875rem;font-weight:500}
+        .top-bar a:hover{text-decoration:underline}
+        h1{font-size:1.25rem;font-weight:700;letter-spacing:-.5px}
+        h1 span{color:var(--accent)}
+        .hud{display:flex;justify-content:space-between;width:100%;max-width:480px;padding:0 .25rem;font-size:.875rem;color:var(--text-muted)}
+        .hud strong{color:var(--text);font-weight:600}
+        .effects-bar{display:flex;gap:.4rem;min-height:1.25rem;width:100%;max-width:480px;padding:0 .25rem;flex-wrap:wrap;justify-content:center}
+        .effect-pill{display:inline-flex;align-items:center;padding:.1rem .5rem;border-radius:10px;font-size:.65rem;font-weight:600;color:#fff}
+        canvas{display:block;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:none;touch-action:none}
+        .overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,15,.85);border-radius:8px;gap:1rem;pointer-events:auto}
+        .overlay.hidden{display:none}
+        .overlay h2{font-size:1.75rem;font-weight:800;letter-spacing:-1px}
+        .overlay p{color:var(--text-muted);font-size:.9375rem}
+        .overlay .final-score{font-size:2.5rem;font-weight:800;color:var(--accent)}
+        .play-btn{padding:.75rem 2rem;font-family:var(--font);font-size:1rem;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+        .play-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(108,99,255,.3)}
+        .canvas-container{position:relative;line-height:0}
+        .controls-hint{font-size:.75rem;color:var(--text-muted);text-align:center}
+        .legend-toggle{background:none;border:1px solid var(--border);color:var(--text-muted);font-family:var(--font);font-size:.75rem;padding:.3rem .8rem;border-radius:6px;cursor:pointer;margin-top:.25rem}
+        .legend-toggle:hover{color:var(--text);border-color:var(--text-muted)}
+        .legend-side{display:none;width:280px;max-height:90vh;overflow-y:auto;padding:.75rem 1rem;font-size:.75rem;color:var(--text-muted);line-height:1.6;border:1px solid var(--border);border-radius:8px;background:var(--surface);flex-shrink:0}
+        .legend-side.open{display:block}
+        .legend-mobile{display:none;width:100%;max-width:480px;padding:.75rem 1rem;font-size:.75rem;color:var(--text-muted);line-height:1.6}
+        .legend-mobile.open{display:block}
+        .legend-side h3,.legend-mobile h3{color:var(--text);font-size:.85rem;margin:.6rem 0 .3rem;font-weight:700}
+        .legend-side h3:first-child,.legend-mobile h3:first-child{margin-top:0}
+        .legend-grid{display:grid;grid-template-columns:auto 1fr;gap:.15rem .6rem;align-items:center}
+        .legend-dot{display:inline-block;width:18px;height:18px;border-radius:50%;text-align:center;line-height:18px;font-size:8px;font-weight:700;color:#fff;flex-shrink:0}
+        .legend-rect{display:inline-block;width:28px;height:16px;border-radius:3px;text-align:center;line-height:16px;font-size:7px;font-weight:700;color:#fff}
+        .legend-side span.label,.legend-mobile span.label{color:var(--text)}
+        @media(min-width:850px){.legend-toggle{display:none}.legend-side{display:block}}
+        @media(max-width:849px){.legend-side{display:none!important}.page-layout{flex-direction:column;align-items:center;gap:0}}
+        @media(max-width:520px){canvas{border-radius:4px}}
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page-layout">
+<div class="game-wrapper">
+    <div class="top-bar">
+        <a href="../index.html">&larr; Deacyde.com</a>
+        <h1>SEO <span>Invaders</span></h1>
+    </div>
+    <div class="hud">
+        <div>DA: <strong id="scoreDisp">0</strong></div>
+        <div>Lives: <strong id="livesDisp">3</strong></div>
+        <div>Wave: <strong id="waveDisp">1</strong></div>
+    </div>
+    <div class="effects-bar" id="effectsBar"></div>
+    <div class="canvas-container">
+        <canvas id="game" width="480" height="560"></canvas>
+        <div class="overlay" id="startOvl">
+            <h2>SEO Invaders</h2>
+            <p>Defend your site from algorithm threats!</p>
+            <button class="play-btn" id="startBtn">Play</button>
+        </div>
+        <div class="overlay hidden" id="overOvl">
+            <h2>Deindexed!</h2>
+            <div class="final-score" id="finalDA">0</div>
+            <p>Final Domain Authority</p>
+            <button class="play-btn" id="restartBtn">Try Again</button>
+        </div>
+    </div>
+    <p class="controls-hint">Mouse/touch or Arrow keys to move &middot; Auto-fire enabled</p>
+    <button class="legend-toggle" id="legendToggle">&#9660; How to Play &amp; Legend</button>
+    <div class="legend-mobile" id="legendMobile">
+        <h3>&#127918; Controls</h3>
+        <p><span class="label">Move:</span> Mouse, touch, or Arrow keys / A &amp; D<br>
+        <span class="label">Fire:</span> Automatic &mdash; just focus on dodging!</p>
+        <h3>&#128994; Power-Ups (catch these!)</h3>
+        <div class="legend-grid">
+            <span class="legend-dot" style="background:#1dd1a1">BL</span> <span><span class="label">Backlink Boost</span> &mdash; double fire rate for 10s</span>
+            <span class="legend-dot" style="background:#48dbfb">SM</span> <span><span class="label">Schema Markup</span> &mdash; shield that absorbs 1 hit</span>
+            <span class="legend-dot" style="background:#feca57">CD</span> <span><span class="label">CDN Speed</span> &mdash; +50% ship speed for 10s</span>
+            <span class="legend-dot" style="background:#00b894">SS</span> <span><span class="label">SSL Certificate</span> &mdash; invincible for 5s</span>
+            <span class="legend-dot" style="background:#6c63ff">AI</span> <span><span class="label">AI Visibility</span> &mdash; freezes all enemies for 5s</span>
+        </div>
+        <h3>&#128308; Detriments (avoid these!)</h3>
+        <div class="legend-grid">
+            <span class="legend-dot" style="background:#ff6b6b">KW</span> <span><span class="label">Keyword Stuffing</span> &mdash; slows your ship for 8s</span>
+            <span class="legend-dot" style="background:#ee5a24">CL</span> <span><span class="label">Cloaking Penalty</span> &mdash; ship nearly invisible for 8s</span>
+        </div>
+        <h3>&#128126; Enemies</h3>
+        <div class="legend-grid">
+            <span class="legend-rect" style="background:#ff6b6b">404</span> <span><span class="label">404 Errors</span> &mdash; slow, don't shoot</span>
+            <span class="legend-rect" style="background:#ff9f43">LINK</span> <span><span class="label">Broken Links</span> &mdash; slightly faster</span>
+            <span class="legend-rect" style="background:#48dbfb">&times;2</span> <span><span class="label">Duplicate Content</span> &mdash; splits into 2 when killed!</span>
+            <span class="legend-rect" style="background:#1dd1a1">G</span> <span><span class="label">Core Updates</span> &mdash; 2 HP, shoots at you</span>
+            <span class="legend-rect" style="background:#a29bfe">BOT</span> <span><span class="label">SEO Bots</span> &mdash; fast, fires aimed shots</span>
+            <span class="legend-rect" style="background:#f368e0">FLAG</span> <span><span class="label">Penalty Flags</span> &mdash; zigzag movement</span>
+            <span class="legend-rect" style="background:#10ac84">SPDR</span> <span><span class="label">Algorithm Spiders</span> &mdash; 2 HP, aimed shots</span>
+        </div>
+        <h3>&#128163; Bosses (every 5 waves)</h3>
+        <div class="legend-grid">
+            <span class="legend-rect" style="background:#636e72;width:36px">PANDA</span> <span><span class="label">Google Panda</span> &mdash; 30 HP, spread shots at 50%</span>
+            <span class="legend-rect" style="background:#2d3436;width:36px">PNGN</span> <span><span class="label">Google Penguin</span> &mdash; 40 HP, faster spread</span>
+            <span class="legend-rect" style="background:#00b894;width:36px">HBIRD</span> <span><span class="label">Google Hummingbird</span> &mdash; 50 HP, very fast</span>
+        </div>
+        <h3>&#128161; Tips</h3>
+        <p>&bull; Score is shown as <span class="label">Domain Authority (DA)</span><br>
+        &bull; Enemies speed up as you destroy more in a wave<br>
+        &bull; If enemies reach the bottom, it's game over<br>
+        &bull; After wave 15, levels repeat with tougher enemies<br>
+        &bull; Wave completion bonus: wave &times; 50 DA points</p>
+    </div>
+</div>
+<div class="legend-side" id="legendSide">
+    <h3>&#127918; Controls</h3>
+    <p><span class="label">Move:</span> Mouse, touch, or Arrow keys / A &amp; D<br>
+    <span class="label">Fire:</span> Automatic &mdash; just focus on dodging!</p>
+    <h3>&#128994; Power-Ups</h3>
+    <div class="legend-grid">
+        <span class="legend-dot" style="background:#1dd1a1">BL</span> <span><span class="label">Backlink Boost</span> &mdash; 2&times; fire rate 10s</span>
+        <span class="legend-dot" style="background:#48dbfb">SM</span> <span><span class="label">Schema Markup</span> &mdash; absorbs 1 hit</span>
+        <span class="legend-dot" style="background:#feca57">CD</span> <span><span class="label">CDN Speed</span> &mdash; +50% speed 10s</span>
+        <span class="legend-dot" style="background:#00b894">SS</span> <span><span class="label">SSL Certificate</span> &mdash; invincible 5s</span>
+        <span class="legend-dot" style="background:#6c63ff">AI</span> <span><span class="label">AI Visibility</span> &mdash; freeze enemies 5s</span>
+    </div>
+    <h3>&#128308; Detriments</h3>
+    <div class="legend-grid">
+        <span class="legend-dot" style="background:#ff6b6b">KW</span> <span><span class="label">Keyword Stuffing</span> &mdash; slows ship 8s</span>
+        <span class="legend-dot" style="background:#ee5a24">CL</span> <span><span class="label">Cloaking</span> &mdash; ship invisible 8s</span>
+    </div>
+    <h3>&#128126; Enemies</h3>
+    <div class="legend-grid">
+        <span class="legend-rect" style="background:#ff6b6b">404</span> <span><span class="label">404 Errors</span> &mdash; slow</span>
+        <span class="legend-rect" style="background:#ff9f43">LINK</span> <span><span class="label">Broken Links</span> &mdash; faster</span>
+        <span class="legend-rect" style="background:#48dbfb">&times;2</span> <span><span class="label">Dupes</span> &mdash; splits in 2!</span>
+        <span class="legend-rect" style="background:#1dd1a1">G</span> <span><span class="label">Core Updates</span> &mdash; 2HP, fires</span>
+        <span class="legend-rect" style="background:#a29bfe">BOT</span> <span><span class="label">SEO Bots</span> &mdash; aimed shots</span>
+        <span class="legend-rect" style="background:#f368e0">FLAG</span> <span><span class="label">Penalties</span> &mdash; zigzag</span>
+        <span class="legend-rect" style="background:#10ac84">SPDR</span> <span><span class="label">Spiders</span> &mdash; 2HP, aimed</span>
+    </div>
+    <h3>&#128163; Bosses</h3>
+    <div class="legend-grid">
+        <span class="legend-rect" style="background:#636e72;width:36px">PANDA</span> <span>30 HP, spread shots</span>
+        <span class="legend-rect" style="background:#2d3436;width:36px">PNGN</span> <span>40 HP, faster spread</span>
+        <span class="legend-rect" style="background:#00b894;width:36px">HBIRD</span> <span>50 HP, very fast</span>
+    </div>
+    <h3>&#128161; Tips</h3>
+    <p>&bull; Score = Domain Authority<br>
+    &bull; Enemies speed up as wave thins<br>
+    &bull; Enemies at bottom = game over<br>
+    &bull; After wave 15, tougher cycle<br>
+    &bull; Wave bonus: wave &times; 50 DA</p>
+</div>
+</div>
+
+<script>
+(function(){
+var canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+var W=canvas.width,H=canvas.height;
+var startOvl=document.getElementById('startOvl');
+var overOvl=document.getElementById('overOvl');
+var scoreDisp=document.getElementById('scoreDisp');
+var livesDisp=document.getElementById('livesDisp');
+var waveDisp=document.getElementById('waveDisp');
+var finalDA=document.getElementById('finalDA');
+var effectsBar=document.getElementById('effectsBar');
+
+// === ENEMY TYPES ===
+var ET={
+    '404':   {c:'#ff6b6b',hp:1,pts:10,w:30,h:18,lbl:'404',fires:false},
+    'link':  {c:'#ff9f43',hp:1,pts:15,w:28,h:18,lbl:'LINK',fires:false},
+    'dupe':  {c:'#48dbfb',hp:1,pts:20,w:26,h:18,lbl:'\u00d72',fires:false,splits:true},
+    'core':  {c:'#1dd1a1',hp:2,pts:30,w:28,h:20,lbl:'G',fires:true,fr:.002},
+    'bot':   {c:'#a29bfe',hp:1,pts:25,w:22,h:16,lbl:'BOT',fires:true,fr:.004,aimed:true},
+    'flag':  {c:'#f368e0',hp:1,pts:25,w:24,h:20,lbl:'FLAG',fires:false,zigzag:true},
+    'spider':{c:'#10ac84',hp:2,pts:35,w:26,h:20,lbl:'SPDR',fires:true,fr:.003,aimed:true}
+};
+// === BOSSES ===
+var BOSS={
+    'panda':      {c:'#636e72',hp:30,w:80,h:50,lbl:'PANDA',fr:.03,spd:2,pts:500,accent:'#dfe6e9'},
+    'penguin':    {c:'#2d3436',hp:40,w:90,h:55,lbl:'PENGUIN',fr:.04,spd:2.5,pts:750,accent:'#74b9ff'},
+    'hummingbird':{c:'#00b894',hp:50,w:70,h:45,lbl:'HBIRD',fr:.05,spd:4,pts:1000,accent:'#55efc4'}
+};
+// === WAVES ===
+var WAVES=[
+    {name:'404 Errors',types:['404'],rows:3,cols:7},
+    {name:'Broken Links',types:['link'],rows:3,cols:8},
+    {name:'Duplicate Content',types:['dupe'],rows:3,cols:6},
+    {name:'Core Updates',types:['core','404'],rows:4,cols:8},
+    {name:'Google Panda',boss:'panda'},
+    {name:'Negative SEO Bots',types:['bot'],rows:4,cols:8},
+    {name:'Penalty Flags',types:['flag','link'],rows:4,cols:8},
+    {name:'Algorithm Spiders',types:['spider'],rows:3,cols:7},
+    {name:'The Gauntlet',types:['core','bot','flag'],rows:4,cols:9},
+    {name:'Google Penguin',boss:'penguin'},
+    {name:'Bot Swarm',types:['bot','spider'],rows:4,cols:9},
+    {name:'Penalty Storm',types:['flag','core'],rows:4,cols:8},
+    {name:'Spider Nest',types:['spider','dupe'],rows:4,cols:8},
+    {name:'Full Audit',types:['404','link','core','bot'],rows:5,cols:9},
+    {name:'Google Hummingbird',boss:'hummingbird'}
+];
+// === POWERUPS ===
+var GOOD_PU=[
+    {type:'backlink',lbl:'BL',c:'#1dd1a1'},
+    {type:'schema',lbl:'SM',c:'#48dbfb'},
+    {type:'cdn',lbl:'CD',c:'#feca57'},
+    {type:'ssl',lbl:'SS',c:'#00b894'},
+    {type:'ai',lbl:'AI',c:'#6c63ff'}
+];
+var BAD_PU=[
+    {type:'stuffing',lbl:'KW',c:'#ff6b6b'},
+    {type:'cloaking',lbl:'CL',c:'#ee5a24'}
+];
+function pickPU(w){
+    if(w<4||Math.random()<.7)return GOOD_PU[Math.floor(Math.random()*GOOD_PU.length)];
+    return BAD_PU[Math.floor(Math.random()*BAD_PU.length)];
+}
+
+// === CONSTANTS ===
+var PU_DROP=.15,PU_SPEED=2.2,PU_R=10;
+var PLAYER_W=28,PLAYER_H=20,PLAYER_SPEED=5;
+var FIRE_RATE=250,BULLET_SPD=7;
+var EBULLET_SPD=3.5;
+var EFFECT_DUR=10000,FREEZE_DUR=5000,SSL_DUR=5000;
+var STEP_DOWN=12;
+
+// === STATE ===
+var score,lives,wave,running;
+var player,enemies,pBullets,eBullets,powerups,particles,effects;
+var formDir,totalSpawned;
+var waveText='',waveAlpha=0,waveDelay=0;
+var invulnTimer=0;
+var lastFire=0;
+var effectsCtr=0;
+var keys={};
+var mouseX=W/2,mouseActive=false;
+
+// === HELPERS ===
+function isFrozen(){return effects.ai&&Date.now()<effects.ai}
+function isSSL(){return effects.ssl&&Date.now()<effects.ssl}
+function fireRate(){return effects.backlink&&Date.now()<effects.backlink?FIRE_RATE/2:FIRE_RATE}
+function pSpeed(){
+    var s=PLAYER_SPEED;
+    if(effects.cdn&&Date.now()<effects.cdn)s*=1.5;
+    if(effects.stuffing&&Date.now()<effects.stuffing)s*=.5;
+    return s;
+}
+
+function drawRR(x,y,w,h,r){
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+function spawnP(x,y,c,n){
+    for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+    particles.push({x:x,y:y,dx:Math.cos(a)*s,dy:Math.sin(a)*s,life:1,decay:.02+Math.random()*.03,size:2+Math.random()*3,color:c})}
+}
+
+// === WAVE SETUP ===
+function getWaveDef(w){
+    var idx=(w-1)%15;
+    var cycle=Math.floor((w-1)/15);
+    var def=JSON.parse(JSON.stringify(WAVES[idx]));
+    def.cycle=cycle;
+    return def;
+}
+
+function spawnWave(w){
+    var def=getWaveDef(w);
+    enemies=[];
+    formDir=1;
+    if(def.boss){
+        var b=BOSS[def.boss];
+        enemies.push({
+            x:W/2,y:70,w:b.w,h:b.h,hp:b.hp+def.cycle*10,maxHp:b.hp+def.cycle*10,
+            color:b.c,accent:b.accent,label:b.lbl,pts:b.pts,
+            isBoss:true,bossType:def.boss,
+            fires:true,fr:b.fr,aimed:true,
+            dx:b.spd,alive:true,zigzag:false,splits:false,
+            baseX:0,baseY:0,tick:0
+        });
+    } else {
+        var rows=def.rows,cols=def.cols;
+        var gapX=(W-40)/cols,gapY=30;
+        var offX=20+gapX/2,offY=50;
+        for(var r=0;r<rows;r++){
+            for(var c=0;c<cols;c++){
+                var t=def.types[(r+c)%def.types.length];
+                var et=ET[t];
+                var hp=et.hp+def.cycle;
+                enemies.push({
+                    x:offX+c*gapX,y:offY+r*gapY,
+                    w:et.w,h:et.h,hp:hp,maxHp:hp,
+                    color:et.c,label:et.lbl,pts:et.pts,
+                    fires:et.fires,fr:et.fr||0,aimed:et.aimed||false,
+                    alive:true,isBoss:false,
+                    zigzag:et.zigzag||false,splits:et.splits||false,
+                    baseX:offX+c*gapX,baseY:offY+r*gapY,tick:Math.random()*100
+                });
+            }
+        }
+    }
+    totalSpawned=enemies.length;
+    waveText=def.boss?'\u26a0 BOSS: '+def.name+' \u26a0':'Wave '+w+': '+def.name;
+    waveAlpha=1;
+    waveDelay=90; // frames before enemies activate
+}
+
+// === INIT ===
+function init(){
+    score=0;lives=3;wave=1;
+    scoreDisp.textContent=score;
+    livesDisp.textContent=lives;
+    waveDisp.textContent=wave;
+    player={x:W/2,y:H-35,shield:false};
+    pBullets=[];eBullets=[];powerups=[];particles=[];
+    effects={};invulnTimer=0;lastFire=0;effectsCtr=0;
+    effectsBar.innerHTML='';
+    spawnWave(wave);
+}
+
+function startGame(){
+    init();
+    startOvl.classList.add('hidden');
+    overOvl.classList.add('hidden');
+    running=true;
+    requestAnimationFrame(loop);
+}
+
+// === ACTIVATE POWERUP ===
+function activatePU(type){
+    var now=Date.now();
+    switch(type){
+        case 'backlink':effects.backlink=now+EFFECT_DUR;break;
+        case 'schema':player.shield=true;break;
+        case 'cdn':delete effects.stuffing;effects.cdn=now+EFFECT_DUR;break;
+        case 'ssl':effects.ssl=now+SSL_DUR;break;
+        case 'ai':effects.ai=now+FREEZE_DUR;break;
+        case 'stuffing':delete effects.cdn;effects.stuffing=now+8000;break;
+        case 'cloaking':effects.cloaking=now+8000;break;
+    }
+}
+
+// === UPDATE ===
+function update(){
+    var now=Date.now();
+    var frozen=isFrozen();
+    var spd=pSpeed();
+
+    // Wave intro delay
+    if(waveDelay>0){waveDelay--;if(waveAlpha>0)waveAlpha-=.012;return;}
+    if(waveAlpha>0)waveAlpha-=.012;
+
+    // Player movement
+    if(keys.ArrowLeft||keys.a||keys.A){player.x-=spd;mouseActive=false;}
+    if(keys.ArrowRight||keys.d||keys.D){player.x+=spd;mouseActive=false;}
+    if(mouseActive)player.x+=(mouseX-player.x)*.15;
+    player.x=Math.max(PLAYER_W/2,Math.min(W-PLAYER_W/2,player.x));
+
+    // Auto-fire
+    if(now-lastFire>=fireRate()){
+        lastFire=now;
+        pBullets.push({x:player.x,y:player.y-PLAYER_H/2,dy:-BULLET_SPD});
+    }
+
+    // Invulnerability tick
+    if(invulnTimer>0)invulnTimer--;
+
+    // === PLAYER BULLETS ===
+    for(var i=pBullets.length-1;i>=0;i--){
+        var b=pBullets[i];b.y+=b.dy;
+        if(b.y<-10){pBullets.splice(i,1);continue;}
+        var hit=false;
+        for(var j=0;j<enemies.length;j++){
+            var e=enemies[j];if(!e.alive)continue;
+            if(b.x>=e.x-e.w/2&&b.x<=e.x+e.w/2&&b.y>=e.y-e.h/2&&b.y<=e.y+e.h/2){
+                e.hp--;
+                if(e.hp<=0){
+                    e.alive=false;
+                    score+=e.pts;scoreDisp.textContent=score;
+                    spawnP(e.x,e.y,e.color,e.isBoss?25:10);
+                    // Splits (duplicate content)
+                    if(e.splits&&!e.isBoss){
+                        for(var si=0;si<2;si++){
+                            enemies.push({
+                                x:e.x+(si===0?-12:12),y:e.y,
+                                w:e.w*.7,h:e.h*.7,hp:1,maxHp:1,
+                                color:'#48dbfb',label:'x2',pts:10,
+                                fires:false,fr:0,aimed:false,alive:true,isBoss:false,
+                                zigzag:false,splits:false,baseX:e.x+(si===0?-12:12),baseY:e.y,tick:Math.random()*100
+                            });
+                        }
+                    }
+                    // Drop powerup
+                    if(Math.random()<PU_DROP){
+                        var pu=pickPU(wave);
+                        powerups.push({x:e.x,y:e.y,type:pu.type,lbl:pu.lbl,c:pu.c});
+                    }
+                } else {
+                    spawnP(b.x,b.y,e.color,4);
+                }
+                hit=true;break;
+            }
+        }
+        if(hit)pBullets.splice(i,1);
+    }
+
+    // === ENEMIES ===
+    if(!frozen){
+        var aliveCount=0,leftmost=W,rightmost=0,bottommost=0;
+        for(var i=0;i<enemies.length;i++){
+            var e=enemies[i];if(!e.alive)continue;
+            aliveCount++;
+            if(e.isBoss){
+                e.x+=e.dx;
+                e.tick++;
+                // Boss vertical wobble
+                e.y=70+Math.sin(e.tick*.02)*20;
+                if(e.x-e.w/2<10||e.x+e.w/2>W-10)e.dx=-e.dx;
+            }
+            if(!e.isBoss){
+                if(e.x-e.w/2<leftmost)leftmost=e.x-e.w/2;
+                if(e.x+e.w/2>rightmost)rightmost=e.x+e.w/2;
+                if(e.y+e.h/2>bottommost)bottommost=e.y+e.h/2;
+            }
+        }
+
+        // Formation movement for non-boss
+        var hasBoss=enemies.some(function(e){return e.alive&&e.isBoss});
+        if(!hasBoss&&aliveCount>0){
+            var baseSpd=.5+wave*.08;
+            var speedMult=1+(1-aliveCount/Math.max(totalSpawned,1))*2;
+            var moveX=formDir*baseSpd*speedMult;
+
+            var needReverse=false;
+            if(formDir>0&&rightmost+moveX>W-5)needReverse=true;
+            if(formDir<0&&leftmost+moveX<5)needReverse=true;
+
+            for(var i=0;i<enemies.length;i++){
+                var e=enemies[i];if(!e.alive||e.isBoss)continue;
+                if(needReverse)e.y+=STEP_DOWN;
+                e.x+=needReverse?0:moveX;
+                e.tick++;
+                if(e.zigzag)e.x+=Math.sin(e.tick*.08)*1.5;
+            }
+            if(needReverse)formDir=-formDir;
+        }
+
+        // Enemy firing
+        for(var i=0;i<enemies.length;i++){
+            var e=enemies[i];if(!e.alive||!e.fires)continue;
+            var rate=e.isBoss?(e.hp<e.maxHp*.5?e.fr*2:e.fr):e.fr;
+            if(Math.random()<rate){
+                if(e.isBoss&&e.hp<e.maxHp*.5){
+                    // Boss spread shot
+                    for(var s=-1;s<=1;s++){
+                        eBullets.push({x:e.x+s*15,y:e.y+e.h/2,dx:s*1.5,dy:EBULLET_SPD});
+                    }
+                } else if(e.aimed){
+                    var dx=player.x-e.x,dy=player.y-e.y;
+                    var dist=Math.sqrt(dx*dx+dy*dy)||1;
+                    eBullets.push({x:e.x,y:e.y+e.h/2,dx:(dx/dist)*EBULLET_SPD,dy:(dy/dist)*EBULLET_SPD});
+                } else {
+                    eBullets.push({x:e.x,y:e.y+e.h/2,dx:0,dy:EBULLET_SPD});
+                }
+            }
+        }
+
+        // Check if enemies reached player
+        if(bottommost>player.y-20&&!hasBoss){
+            running=false;
+            finalDA.textContent=score;
+            overOvl.classList.remove('hidden');
+            effectsBar.innerHTML='';
+            return;
+        }
+    }
+
+    // === ENEMY BULLETS ===
+    for(var i=eBullets.length-1;i>=0;i--){
+        var b=eBullets[i];
+        if(!frozen){b.x+=(b.dx||0);b.y+=b.dy;}
+        if(b.y>H+10||b.y<-10||b.x<-10||b.x>W+10){eBullets.splice(i,1);continue;}
+        // Hit player
+        if(invulnTimer<=0&&!isSSL()){
+            if(b.x>=player.x-PLAYER_W/2&&b.x<=player.x+PLAYER_W/2&&
+               b.y>=player.y-PLAYER_H/2&&b.y<=player.y+PLAYER_H/2){
+                eBullets.splice(i,1);
+                if(player.shield){
+                    player.shield=false;
+                    spawnP(player.x,player.y,'#48dbfb',10);
+                } else {
+                    lives--;livesDisp.textContent=lives;
+                    spawnP(player.x,player.y,'#ff6b6b',15);
+                    invulnTimer=120; // 2s invuln
+                    if(lives<=0){
+                        running=false;
+                        finalDA.textContent=score;
+                        overOvl.classList.remove('hidden');
+                        effectsBar.innerHTML='';
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // === POWERUPS ===
+    for(var i=powerups.length-1;i>=0;i--){
+        var p=powerups[i];p.y+=PU_SPEED;
+        if(p.y>H+PU_R){powerups.splice(i,1);continue;}
+        if(p.x>=player.x-PLAYER_W/2-PU_R&&p.x<=player.x+PLAYER_W/2+PU_R&&
+           p.y>=player.y-PLAYER_H/2-PU_R&&p.y<=player.y+PLAYER_H/2+PU_R){
+            activatePU(p.type);
+            spawnP(p.x,p.y,p.c,10);
+            powerups.splice(i,1);
+        }
+    }
+
+    // === WAVE COMPLETE ===
+    if(enemies.every(function(e){return!e.alive})){
+        wave++;waveDisp.textContent=wave;
+        // Bonus
+        score+=wave*50;scoreDisp.textContent=score;
+        pBullets=[];eBullets=[];powerups=[];
+        spawnWave(wave);
+    }
+
+    // === PARTICLES ===
+    for(var i=particles.length-1;i>=0;i--){
+        var p=particles[i];p.x+=p.dx;p.y+=p.dy;p.dy+=.05;p.life-=p.decay;
+        if(p.life<=0)particles.splice(i,1);
+    }
+
+    if(++effectsCtr%15===0)updateEB();
+}
+
+function updateEB(){
+    var now=Date.now();
+    var defs=[
+        {key:'backlink',lbl:'Backlinks',c:'#1dd1a1'},
+        {key:'cdn',lbl:'CDN Speed',c:'#feca57'},
+        {key:'ssl',lbl:'SSL Shield',c:'#00b894'},
+        {key:'ai',lbl:'AI Visibility',c:'#6c63ff'},
+        {key:'stuffing',lbl:'KW Stuffing',c:'#ff6b6b'},
+        {key:'cloaking',lbl:'Cloaking',c:'#ee5a24'}
+    ];
+    var html='';
+    if(player&&player.shield)html+='<span class="effect-pill" style="background:#48dbfb">Schema \u2714</span>';
+    for(var i=0;i<defs.length;i++){
+        var d=defs[i];
+        if(effects[d.key]&&now<effects[d.key]){
+            var sec=Math.ceil((effects[d.key]-now)/1000);
+            html+='<span class="effect-pill" style="background:'+d.c+'">'+d.lbl+' '+sec+'s</span>';
+        }
+    }
+    effectsBar.innerHTML=html;
+}
+
+// === DRAW ===
+function draw(){
+    ctx.clearRect(0,0,W,H);
+    var frozen=isFrozen();
+    var cloaked=effects.cloaking&&Date.now()<effects.cloaking;
+
+    // Freeze overlay
+    if(frozen){
+        ctx.fillStyle='rgba(108,99,255,.03)';
+        ctx.fillRect(0,0,W,H);
+    }
+
+    // === ENEMIES ===
+    for(var i=0;i<enemies.length;i++){
+        var e=enemies[i];if(!e.alive)continue;
+        ctx.globalAlpha=.4+.6*(e.hp/e.maxHp);
+        if(frozen){ctx.globalAlpha*=.5;}
+        ctx.fillStyle=e.color;
+        drawRR(e.x-e.w/2,e.y-e.h/2,e.w,e.h,e.isBoss?8:4);
+        ctx.fill();
+        // Shine
+        ctx.fillStyle='rgba(255,255,255,.15)';
+        drawRR(e.x-e.w/2,e.y-e.h/2,e.w,e.h/2,e.isBoss?8:4);
+        ctx.fill();
+        ctx.globalAlpha=1;
+        // Label
+        ctx.fillStyle='#fff';
+        ctx.font=e.isBoss?'bold 14px sans-serif':'bold 9px sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(e.label,e.x,e.y);
+        // Boss HP bar
+        if(e.isBoss){
+            var bw=e.w*.8,bx=e.x-bw/2,by=e.y+e.h/2+8;
+            ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(bx,by,bw,4);
+            ctx.fillStyle=e.hp>e.maxHp*.3?'#1dd1a1':'#ff6b6b';
+            ctx.fillRect(bx,by,bw*(e.hp/e.maxHp),4);
+            // Boss glow
+            ctx.shadowColor=e.accent||e.color;ctx.shadowBlur=15;
+            ctx.strokeStyle=e.accent||e.color;ctx.lineWidth=1.5;
+            drawRR(e.x-e.w/2-2,e.y-e.h/2-2,e.w+4,e.h+4,10);
+            ctx.stroke();ctx.shadowBlur=0;
+        }
+        // Multi-hit indicator
+        if(e.maxHp>1&&!e.isBoss){
+            ctx.fillStyle='#fff';ctx.font='bold 7px sans-serif';
+            ctx.fillText(e.hp,e.x,e.y+e.h/2-3);
+        }
+    }
+
+    // === POWERUPS ===
+    for(var i=0;i<powerups.length;i++){
+        var p=powerups[i];
+        ctx.fillStyle=p.c;ctx.shadowColor=p.c;ctx.shadowBlur=10;
+        ctx.beginPath();ctx.arc(p.x,p.y,PU_R,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(p.lbl,p.x,p.y);
+    }
+
+    // === PLAYER BULLETS ===
+    ctx.fillStyle='#6c63ff';
+    for(var i=0;i<pBullets.length;i++){
+        var b=pBullets[i];
+        ctx.shadowColor='#6c63ff';ctx.shadowBlur=6;
+        ctx.fillRect(b.x-1.5,b.y-5,3,10);
+        ctx.shadowBlur=0;
+    }
+
+    // === ENEMY BULLETS ===
+    ctx.fillStyle='#ff6b6b';
+    for(var i=0;i<eBullets.length;i++){
+        var b=eBullets[i];
+        ctx.shadowColor='#ff6b6b';ctx.shadowBlur=6;
+        ctx.beginPath();ctx.arc(b.x,b.y,3,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
+    }
+
+    // === PLAYER ===
+    var pAlpha=1;
+    if(invulnTimer>0)pAlpha=Math.sin(invulnTimer*.3)*.5+.5;
+    if(cloaked)pAlpha=.2;
+    if(isFrozen())pAlpha=.4; // AI visibility makes player semi-transparent
+    ctx.globalAlpha=pAlpha;
+    // Ship body
+    ctx.fillStyle='#6c63ff';
+    ctx.beginPath();
+    ctx.moveTo(player.x,player.y-PLAYER_H/2);
+    ctx.lineTo(player.x+PLAYER_W/2,player.y+PLAYER_H/3);
+    ctx.lineTo(player.x+PLAYER_W/3,player.y+PLAYER_H/2);
+    ctx.lineTo(player.x-PLAYER_W/3,player.y+PLAYER_H/2);
+    ctx.lineTo(player.x-PLAYER_W/2,player.y+PLAYER_H/3);
+    ctx.closePath();ctx.fill();
+    // Cockpit
+    ctx.fillStyle='#847dff';
+    ctx.beginPath();ctx.arc(player.x,player.y-2,4,0,Math.PI*2);ctx.fill();
+    // Engine
+    ctx.fillStyle='#48dbfb';
+    ctx.beginPath();ctx.arc(player.x,player.y+PLAYER_H/2-2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+
+    // Shield ring
+    if(player.shield){
+        ctx.strokeStyle='#48dbfb';ctx.lineWidth=2;
+        ctx.shadowColor='#48dbfb';ctx.shadowBlur=10;
+        ctx.beginPath();ctx.arc(player.x,player.y,PLAYER_W/2+6,0,Math.PI*2);ctx.stroke();
+        ctx.shadowBlur=0;
+    }
+    // SSL glow
+    if(isSSL()){
+        ctx.strokeStyle='#00b894';ctx.lineWidth=2;
+        ctx.shadowColor='#00b894';ctx.shadowBlur=15;
+        ctx.beginPath();ctx.arc(player.x,player.y,PLAYER_W/2+8,0,Math.PI*2);ctx.stroke();
+        ctx.shadowBlur=0;
+    }
+
+    // === PARTICLES ===
+    for(var i=0;i<particles.length;i++){
+        var p=particles[i];
+        ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    // === WAVE TEXT ===
+    if(waveAlpha>0){
+        ctx.globalAlpha=Math.min(waveAlpha,1);
+        ctx.fillStyle='#fff';
+        ctx.font='bold 24px sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.shadowColor='rgba(108,99,255,.5)';ctx.shadowBlur=20;
+        ctx.fillText(waveText,W/2,H/2-10);
+        ctx.shadowBlur=0;
+        // Subtitle for boss
+        if(waveText.indexOf('BOSS')!==-1){
+            ctx.font='bold 14px sans-serif';
+            ctx.fillStyle='#ff6b6b';
+            ctx.fillText('INCOMING THREAT!',W/2,H/2+20);
+        }
+        ctx.globalAlpha=1;
+    }
+}
+
+// === LOOP ===
+function loop(){
+    if(!running)return;
+    update();draw();
+    requestAnimationFrame(loop);
+}
+
+// === EVENTS ===
+document.addEventListener('keydown',function(e){if(e.key.indexOf('Arrow')===0||e.key==='a'||e.key==='A'||e.key==='d'||e.key==='D')e.preventDefault();keys[e.key]=true;});
+document.addEventListener('keyup',function(e){keys[e.key]=false;});
+canvas.addEventListener('mousemove',function(e){
+    var r=canvas.getBoundingClientRect();
+    mouseX=(e.clientX-r.left)*(W/r.width);mouseActive=true;
+});
+canvas.addEventListener('touchmove',function(e){
+    e.preventDefault();var r=canvas.getBoundingClientRect();
+    mouseX=(e.touches[0].clientX-r.left)*(W/r.width);mouseActive=true;
+},{passive:false});
+canvas.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
+
+// === RESIZE ===
+function resize(){
+    var mw=Math.min(480,window.innerWidth-32),s=mw/480;
+    canvas.style.width=mw+'px';canvas.style.height=(560*s)+'px';
+}
+resize();window.addEventListener('resize',resize);
+
+// === BUTTONS ===
+document.getElementById('startBtn').addEventListener('click',startGame);
+document.getElementById('restartBtn').addEventListener('click',startGame);
+document.getElementById('legendToggle').addEventListener('click',function(){
+    var p=document.getElementById('legendMobile');
+    p.classList.toggle('open');
+    this.textContent=p.classList.contains('open')?'\u25B2 Hide Legend':'\u25BC How to Play & Legend';
+});
+})();
+</script>
+</body>
+</html>
