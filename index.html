@@ -31,6 +31,7 @@
                 <li><a href="index.html#skills">Skills</a></li>
                 <li><a href="index.html#experience">Experience</a></li>
                 <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#apps">Apps</a></li>
                 <li><a href="index.html#contact">Contact</a></li>
                 <li><a href="https://deacyde.com/M_Williams_Resume.pdf" class="btn btn-outline" download>Resume</a></li>
             </ul>
@@ -532,6 +533,30 @@
         </div>
     </section>
 
+    <!-- Apps -->
+    <section id="apps" class="section">
+        <div class="container">
+            <div class="section-header fade-in">
+                <h2>Apps</h2>
+                <p class="section-sub">Tools &amp; utilities</p>
+            </div>
+
+            <h3 class="subsection-title">SEO News Feed</h3>
+            <p style="color:#aaa;margin-bottom:1.5rem;">Latest 10 articles from top SEO publications</p>
+
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+                <button onclick="filterFeed('all')" class="btn btn-outline feed-btn active" data-filter="all">All</button>
+                <button onclick="filterFeed('seroundtable')" class="btn btn-outline feed-btn" data-filter="seroundtable">SE Roundtable</button>
+                <button onclick="filterFeed('searchengineland')" class="btn btn-outline feed-btn" data-filter="searchengineland">Search Engine Land</button>
+                <button onclick="filterFeed('searchenginejournal')" class="btn btn-outline feed-btn" data-filter="searchenginejournal">Search Engine Journal</button>
+            </div>
+
+            <div id="seo-feed" style="display:grid;gap:1rem;">
+                <p style="color:#aaa;">Loading articles...</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Contact -->
     <section id="contact" class="section section-alt">
         <div class="container">
@@ -593,5 +618,50 @@
     </footer>
 
     <script src="https://deacyde.com/js/main.js"></script>
+    <script>
+        const feeds = [
+            { name: 'seroundtable', label: 'SE Roundtable', url: 'https://www.seroundtable.com/feed' },
+            { name: 'searchengineland', label: 'Search Engine Land', url: 'https://searchengineland.com/feed' },
+            { name: 'searchenginejournal', label: 'Search Engine Journal', url: 'https://www.searchenginejournal.com/feed' },
+        ];
+
+        let allArticles = [];
+
+        async function fetchFeed(feed) {
+            const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=10`);
+            const data = await res.json();
+            return data.items.map(item => ({ ...item, source: feed.name, sourceLabel: feed.label }));
+        }
+
+        async function loadFeeds() {
+            const results = await Promise.all(feeds.map(fetchFeed));
+            allArticles = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 10);
+            renderFeed(allArticles);
+        }
+
+        function renderFeed(articles) {
+            const container = document.getElementById('seo-feed');
+            if (!articles.length) { container.innerHTML = '<p style="color:#aaa;">No articles found.</p>'; return; }
+            container.innerHTML = articles.map(a => `
+                <div style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:1.25rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem;color:#888;background:#222;padding:2px 8px;border-radius:4px;">${a.sourceLabel}</span>
+                        <span style="font-size:0.75rem;color:#666;">${new Date(a.pubDate).toLocaleDateString()}</span>
+                    </div>
+                    <a href="${a.link}" target="_blank" rel="noopener" style="color:#fff;font-weight:600;text-decoration:none;font-size:1rem;line-height:1.4;">${a.title}</a>
+                </div>
+            `).join('');
+        }
+
+        function filterFeed(source) {
+            document.querySelectorAll('.feed-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-filter="${source}"]`).classList.add('active');
+            if (source === 'all') { renderFeed(allArticles); return; }
+            const filtered = allArticles.filter(a => a.source === source);
+            renderFeed(filtered.length ? filtered : allArticles.filter(a => a.source === source));
+        }
+
+        loadFeeds();
+    </script>
 </body>
 </html>
