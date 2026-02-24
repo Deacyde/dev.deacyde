@@ -47,23 +47,23 @@
 
   <script>
     const sources = [
-      { id: 'feed-sert', url: 'https://www.seroundtable.com/feed' },
-      { id: 'feed-sel',  url: 'https://searchengineland.com/feed' },
+      { id: 'feed-sert', url: 'http://feeds.seroundtable.com/SearchEngineRoundtable1' },
+      { id: 'feed-sel',  url: 'https://feeds.feedburner.com/searchengineland' },
       { id: 'feed-sej',  url: 'https://www.searchenginejournal.com/feed' },
     ];
 
     async function loadFeed({ id, url }) {
       const el = document.getElementById(id);
       try {
-        const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const res = await fetch(proxy);
-        const text = await res.text();
-        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const data = await res.json();
+        const xml = new DOMParser().parseFromString(data.contents, 'text/xml');
         const items = [...xml.querySelectorAll('item')].slice(0, 10);
         if (!items.length) throw new Error('No items');
         el.innerHTML = items.map(item => {
           const title = item.querySelector('title')?.textContent || '';
-          const link  = item.querySelector('link')?.textContent || '#';
+          const link  = item.querySelector('link')?.textContent || item.querySelector('guid')?.textContent || '#';
           const date  = item.querySelector('pubDate')?.textContent || '';
           const d = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
           return `<div class="feed-item"><a href="${link}" target="_blank" rel="noopener">${title}</a>${d ? `<span class="date">${d}</span>` : ''}</div>`;
