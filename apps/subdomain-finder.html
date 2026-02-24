@@ -71,8 +71,8 @@
 
   <div id="results" style="display:none;">
     <div class="stats">
-      <div class="stat stat-total"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total Certs</div></div>
-      <div class="stat stat-unique"><div class="stat-num" id="s-unique">0</div><div class="stat-label">Unique Subdomains</div></div>
+      <div class="stat stat-total"><div class="stat-num" id="s-total">0</div><div class="stat-label">Subdomains</div></div>
+      <div class="stat stat-unique"><div class="stat-num" id="s-unique">0</div><div class="stat-label">Active</div></div>
       <div class="stat stat-wildcard"><div class="stat-num" id="s-wildcard">0</div><div class="stat-label">Wildcard Entries</div></div>
       <div class="stat stat-expired"><div class="stat-num" id="s-expired">0</div><div class="stat-label">Expired Certs</div></div>
     </div>
@@ -150,7 +150,7 @@
         }
 
         const now = new Date();
-        allEntries = [];
+        const subMap = new Map(); // subdomain -> best (most recent) cert entry
 
         certs.forEach(cert => {
           const names = (cert.name_value || '').split(/\n/);
@@ -159,14 +159,15 @@
             if (!sub) return;
             const notBefore = cert.not_before || '';
             const notAfter = cert.not_after || '';
-            const isExpired = notAfter ? new Date(notAfter) < now : false;
+            const notAfterDate = notAfter ? new Date(notAfter) : null;
+            const notBeforeDate = notBefore ? new Date(notBefore) : null;
+            const isExpired = notAfterDate ? notAfterDate < now : true;
             const isWildcard = sub.startsWith('*.');
             const issuer = cert.issuer_name || '';
-            // Extract readable CA name
             const caMatch = issuer.match(/O=([^,]+)/);
             const ca = caMatch ? caMatch[1].trim() : issuer.substring(0, 40);
 
-            allEntries.push({
+            const entry = {
               subdomain: sub,
               issuer: ca,
               not_before: notBefore,
@@ -174,25 +175,44 @@
               isExpired,
               isWildcard,
               status: isExpired ? 'expired' : 'active'
-            });
+            };
+
+            const existing = subMap.get(sub);
+            if (!existing) {
+              subMap.set(sub, entry);
+            } else {
+              // Keep the entry with the latest not_after (most recent cert)
+              const existDate = existing.not_after ? new Date(existing.not_after) : new Date(0);
+              const newDate = notAfterDate || new Date(0);
+              if (newDate > existDate) {
+                subMap.set(sub, entry);
+              }
+              // If ANY cert is active, mark the subdomain active
+              if (!isExpired && existing.isExpired) {
+                const best = subMap.get(sub);
+                best.isExpired = false;
+                best.status = 'active';
+              }
+            }
           });
         });
 
-        // Sort by subdomain by default
+        allEntries = Array.from(subMap.values());
         allEntries.sort((a, b) => a.subdomain.localeCompare(b.subdomain));
 
-        const uniqueSubs = new Set(allEntries.map(e => e.subdomain));
+        const totalCerts = certs.length;
         const wildcardCount = allEntries.filter(e => e.isWildcard).length;
+        const activeCount = allEntries.filter(e => !e.isExpired).length;
         const expiredCount = allEntries.filter(e => e.isExpired).length;
 
         document.getElementById('s-total').textContent = allEntries.length;
-        document.getElementById('s-unique').textContent = uniqueSubs.size;
+        document.getElementById('s-unique').textContent = activeCount;
         document.getElementById('s-wildcard').textContent = wildcardCount;
         document.getElementById('s-expired').textContent = expiredCount;
 
         document.getElementById('results').style.display = 'block';
         status.style.color = '#4ade80';
-        status.textContent = `✅ Found ${uniqueSubs.size} unique subdomains across ${allEntries.length} certificate entries`;
+        status.textContent = `✅ Found ${allEntries.length} unique subdomains (${activeCount} active, ${expiredCount} expired) from ${totalCerts} certificates`;
         currentSort = 'subdomain';
         sortAsc = true;
         renderTable();
