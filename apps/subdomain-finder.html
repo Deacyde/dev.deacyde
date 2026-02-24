@@ -168,7 +168,7 @@
         }
 
         const now = new Date();
-        const subMap = new Map(); // subdomain -> best (most recent) cert entry
+        const subMap = new Map(); // subdomain -> best entry
 
         certs.forEach(cert => {
           const names = (cert.name_value || '').split(/\n/);
@@ -178,38 +178,28 @@
             const notBefore = cert.not_before || '';
             const notAfter = cert.not_after || '';
             const notAfterDate = notAfter ? new Date(notAfter) : null;
-            const notBeforeDate = notBefore ? new Date(notBefore) : null;
             const isExpired = notAfterDate ? notAfterDate < now : true;
             const isWildcard = sub.startsWith('*.');
             const issuer = cert.issuer_name || '';
             const caMatch = issuer.match(/O=([^,]+)/);
             const ca = caMatch ? caMatch[1].trim() : issuer.substring(0, 40);
 
-            const entry = {
-              subdomain: sub,
-              issuer: ca,
-              not_before: notBefore,
-              not_after: notAfter,
-              isExpired,
-              isWildcard,
-              status: isExpired ? 'expired' : 'active'
-            };
-
             const existing = subMap.get(sub);
             if (!existing) {
-              subMap.set(sub, entry);
+              subMap.set(sub, { subdomain: sub, issuer: ca, not_before: notBefore, not_after: notAfter, isExpired, isWildcard, status: isExpired ? 'expired' : 'active' });
             } else {
-              // Keep the entry with the latest not_after (most recent cert)
+              // If this cert is active, mark the subdomain active regardless
+              if (!isExpired) {
+                existing.isExpired = false;
+                existing.status = 'active';
+              }
+              // Update to the cert with the latest expiry date
               const existDate = existing.not_after ? new Date(existing.not_after) : new Date(0);
               const newDate = notAfterDate || new Date(0);
               if (newDate > existDate) {
-                subMap.set(sub, entry);
-              }
-              // If ANY cert is active, mark the subdomain active
-              if (!isExpired && existing.isExpired) {
-                const best = subMap.get(sub);
-                best.isExpired = false;
-                best.status = 'active';
+                existing.issuer = ca;
+                existing.not_before = notBefore;
+                existing.not_after = notAfter;
               }
             }
           });
