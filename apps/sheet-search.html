@@ -104,7 +104,13 @@
   </div>
 
   <script>
+    // Columns to use as filter dropdowns (matched by header name)
+    const FILTER_COLS = ['keyword cluster', 'target keyword', 'business units', 'tiger team', 'buying phase', 'product pillars', 'products'];
+    // Columns to search through
+    const SEARCH_COLS = ['permalink', 'keyword cluster', 'target keyword', 'topics'];
+
     let allRows = [], headers = [], visibleCols = [], activeFilters = {};
+    let filterColIdxs = [], searchColIdxs = [];
 
     function setStatus(msg, type = '') {
       const el = document.getElementById('status-msg');
@@ -146,6 +152,10 @@
       if (rows.length < 2) { setStatus('No data found.', 'error'); return; }
       headers = rows[0];
       allRows = rows.slice(1);
+      // Resolve filter and search column indices from headers
+      const lh = headers.map(h => h.toLowerCase().trim());
+      filterColIdxs = FILTER_COLS.map(name => lh.findIndex(h => h.includes(name))).filter(i => i >= 0);
+      searchColIdxs = SEARCH_COLS.map(name => lh.findIndex(h => h.includes(name))).filter(i => i >= 0);
       // Default: show first 10 columns
       visibleCols = headers.map((_, i) => i).slice(0, 10);
       activeFilters = {};
@@ -181,29 +191,28 @@
       document.getElementById('col-count').textContent = visibleCols.length;
     }
 
-    // Build dropdown filters for low-cardinality text columns
+    // Build dropdown filters for the specified columns only
     function buildFilterDropdowns() {
       const bar = document.getElementById('filters-bar');
-      // Remove old dropdowns
       bar.querySelectorAll('select').forEach(s => s.remove());
       const insertBefore = document.getElementById('result-count');
 
-      headers.forEach((h, i) => {
-        const vals = [...new Set(allRows.map(r => (r[i] || '').trim()))].filter(v => v && isNaN(v));
-        if (vals.length >= 2 && vals.length <= 80) {
-          const sel = document.createElement('select');
-          sel.dataset.col = i;
-          sel.innerHTML = `<option value="">All ${h}</option>` + vals.sort().map(v => `<option value="${v}">${v}</option>`).join('');
-          sel.addEventListener('change', () => { activeFilters[i] = sel.value; applyFilters(); });
-          bar.insertBefore(sel, insertBefore);
-        }
+      filterColIdxs.forEach(i => {
+        const h = headers[i];
+        const vals = [...new Set(allRows.map(r => (r[i] || '').trim()))].filter(v => v);
+        if (!vals.length) return;
+        const sel = document.createElement('select');
+        sel.dataset.col = i;
+        sel.innerHTML = `<option value="">All ${h}</option>` + vals.sort().map(v => `<option value="${v}">${v}</option>`).join('');
+        sel.addEventListener('change', () => { activeFilters[i] = sel.value; applyFilters(); });
+        bar.insertBefore(sel, insertBefore);
       });
     }
 
     function getFiltered() {
       const q = (document.getElementById('search').value || '').toLowerCase();
       return allRows.filter(r => {
-        if (q && !r.some(cell => (cell || '').toLowerCase().includes(q))) return false;
+        if (q && !searchColIdxs.some(i => (r[i] || '').toLowerCase().includes(q))) return false;
         for (const [col, val] of Object.entries(activeFilters)) {
           if (val && (r[col] || '').trim() !== val) return false;
         }
