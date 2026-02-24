@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sheet Search | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; min-height: 100vh; }
+    a.back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    a.back:hover { color: #fff; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    /* Load panel */
+    .load-panel { background: #111; border: 1px solid #222; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .load-panel h2 { font-size: 1rem; margin-bottom: 1rem; color: #aaa; font-weight: 500; }
+    .load-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .load-row input[type="text"] { flex: 1; min-width: 240px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.55rem 0.9rem; font-size: 0.9rem; }
+    .load-row input[type="text"]::placeholder { color: #555; }
+    .load-row input[type="file"] { display: none; }
+    label.btn, button.btn { cursor: pointer; background: #428bca; color: #fff; border: none; border-radius: 6px; padding: 0.55rem 1.1rem; font-size: 0.9rem; font-weight: 600; transition: background 0.2s; white-space: nowrap; }
+    label.btn:hover, button.btn:hover { background: #357ab7; }
+    button.btn.secondary { background: #222; border: 1px solid #444; }
+    button.btn.secondary:hover { background: #333; }
+    .or { color: #555; font-size: 0.85rem; }
+    #status-msg { font-size: 0.85rem; color: #888; margin-top: 0.75rem; }
+    #status-msg.error { color: #e05; }
+    #status-msg.ok { color: #4c4; }
+
+    /* Filters */
+    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filters input[type="text"] { flex: 1; min-width: 200px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.9rem; font-size: 0.9rem; }
+    .filters input[type="text"]::placeholder { color: #555; }
+    .filters select { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; padding: 0.5rem 0.75rem; font-size: 0.85rem; cursor: pointer; }
+    .filters select option { background: #1a1a1a; }
+    .filter-info { font-size: 0.82rem; color: #555; align-self: center; margin-left: auto; white-space: nowrap; }
+    button#clear-btn { background: none; border: 1px solid #333; color: #888; border-radius: 6px; padding: 0.5rem 0.9rem; font-size: 0.85rem; cursor: pointer; }
+    button#clear-btn:hover { border-color: #666; color: #fff; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #222; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 700px; }
+    thead tr { background: #161616; }
+    th { padding: 0.7rem 1rem; text-align: left; color: #aaa; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #222; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid #1a1a1a; transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #161616; }
+    td { padding: 0.65rem 1rem; vertical-align: top; color: #ccc; }
+    td.url a { color: #428bca; text-decoration: none; font-size: 0.8rem; max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td.url a:hover { text-decoration: underline; }
+    td.msv { color: #fff; font-variant-numeric: tabular-nums; }
+    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+    .badge.phase-tofu { background: #1a3a1a; color: #5c5; }
+    .badge.phase-mofu { background: #1a2f3a; color: #5af; }
+    .badge.phase-bofu { background: #3a1a1a; color: #f55; }
+    .badge.phase-other { background: #222; color: #888; }
+    .empty { text-align: center; padding: 3rem; color: #555; }
+    #placeholder { text-align: center; padding: 4rem 2rem; color: #444; }
+    #placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
+    #placeholder p { font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <a href="../index.html" class="back">← Back</a>
+  <h1>Sheet Search</h1>
+  <p class="subtitle">Load your Google Sheet data and search/filter it instantly.</p>
+
+  <div class="load-panel">
+    <h2>Load data</h2>
+    <div class="load-row">
+      <input type="text" id="sheet-url" placeholder="Paste Google Sheet published CSV URL…" />
+      <button class="btn" onclick="loadFromURL()">Fetch Sheet</button>
+      <span class="or">or</span>
+      <label class="btn secondary">Upload CSV <input type="file" id="csv-file" accept=".csv" onchange="loadFromFile(this)" /></label>
+    </div>
+    <div id="status-msg"></div>
+    <div style="margin-top:0.9rem; font-size:0.8rem; color:#555;">
+      💡 In Google Sheets: <strong>File → Share → Publish to web</strong> → select sheet → <strong>CSV</strong> → copy link
+    </div>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search keywords, titles, URLs…" oninput="applyFilters()" />
+      <select id="f-cluster" onchange="applyFilters()"><option value="">All Clusters</option></select>
+      <select id="f-products" onchange="applyFilters()"><option value="">All Products</option></select>
+      <select id="f-bu" onchange="applyFilters()"><option value="">All Business Units</option></select>
+      <select id="f-phase" onchange="applyFilters()"><option value="">All Buying Phases</option></select>
+      <span class="filter-info" id="result-count"></span>
+      <button id="clear-btn" onclick="clearFilters()">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Keyword Cluster</th>
+            <th>Target Keyword</th>
+            <th>MSV</th>
+            <th>Products</th>
+            <th>Business Units</th>
+            <th>Buying Phase</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="placeholder">
+    <div class="icon">📊</div>
+    <p>Load a Google Sheet or upload a CSV to get started.</p>
+  </div>
+
+  <script>
+    // Column indices (0-based) matching the headers described
+    // A=0, B=1, C=2, D=3, H=7, I=8, K=10, R=17
+    const COLS = { url: 0, cluster: 1, kw: 2, msv: 3, products: 7, bu: 8, phase: 10, date: 17 };
+
+    let allRows = [];
+
+    function setStatus(msg, type = '') {
+      const el = document.getElementById('status-msg');
+      el.textContent = msg;
+      el.className = type;
+    }
+
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const rows = lines.map(line => {
+        const cells = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') { inQ = !inQ; }
+          else if (c === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+          else cur += c;
+        }
+        cells.push(cur.trim());
+        return cells;
+      });
+      return rows;
+    }
+
+    function loadData(text, source) {
+      const rows = parseCSV(text);
+      if (rows.length < 2) { setStatus('No data found in file.', 'error'); return; }
+      allRows = rows.slice(1); // skip header
+      populateFilters();
+      applyFilters();
+      document.getElementById('app').style.display = '';
+      document.getElementById('placeholder').style.display = 'none';
+      setStatus(`✓ Loaded ${allRows.length} rows from ${source}`, 'ok');
+    }
+
+    async function loadFromURL() {
+      const url = document.getElementById('sheet-url').value.trim();
+      if (!url) { setStatus('Please enter a URL.', 'error'); return; }
+      setStatus('Fetching…');
+      try {
+        const proxy = `https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxy);
+        const data = await res.json();
+        if (!data.contents) throw new Error('Empty response');
+        loadData(data.contents, 'Google Sheets');
+      } catch(e) {
+        setStatus('Failed to fetch sheet. Make sure it is published as CSV and the URL is correct.', 'error');
+      }
+    }
+
+    function loadFromFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      setStatus('Reading file…');
+      const reader = new FileReader();
+      reader.onload = e => loadData(e.target.result, file.name);
+      reader.readAsText(file);
+    }
+
+    function getUnique(col) {
+      const vals = new Set();
+      allRows.forEach(r => { const v = (r[col] || '').trim(); if (v) v.split(/[,;]/).forEach(x => { const t = x.trim(); if (t) vals.add(t); }); });
+      return [...vals].sort();
+    }
+
+    function populateFilters() {
+      fillSelect('f-cluster', getUnique(COLS.cluster), 'All Clusters');
+      fillSelect('f-products', getUnique(COLS.products), 'All Products');
+      fillSelect('f-bu', getUnique(COLS.bu), 'All Business Units');
+      fillSelect('f-phase', getUnique(COLS.phase), 'All Buying Phases');
+    }
+
+    function fillSelect(id, opts, placeholder) {
+      const sel = document.getElementById(id);
+      sel.innerHTML = `<option value="">${placeholder}</option>` + opts.map(o => `<option value="${o}">${o}</option>`).join('');
+    }
+
+    function phaseBadge(phase) {
+      const p = (phase || '').toLowerCase();
+      let cls = 'phase-other';
+      if (p.includes('tofu') || p.includes('aware')) cls = 'phase-tofu';
+      else if (p.includes('mofu') || p.includes('consid')) cls = 'phase-mofu';
+      else if (p.includes('bofu') || p.includes('decis') || p.includes('purch')) cls = 'phase-bofu';
+      return phase ? `<span class="badge ${cls}">${phase}</span>` : '';
+    }
+
+    function applyFilters() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const cluster = document.getElementById('f-cluster').value;
+      const products = document.getElementById('f-products').value;
+      const bu = document.getElementById('f-bu').value;
+      const phase = document.getElementById('f-phase').value;
+
+      const filtered = allRows.filter(r => {
+        if (q && !Object.values(COLS).some(i => (r[i] || '').toLowerCase().includes(q))) return false;
+        if (cluster && !(r[COLS.cluster] || '').includes(cluster)) return false;
+        if (products && !(r[COLS.products] || '').includes(products)) return false;
+        if (bu && !(r[COLS.bu] || '').includes(bu)) return false;
+        if (phase && !(r[COLS.phase] || '').includes(phase)) return false;
+        return true;
+      });
+
+      document.getElementById('result-count').textContent = `${filtered.length} of ${allRows.length} rows`;
+
+      const tbody = document.getElementById('tbl-body');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">No results match your filters.</td></tr>`;
+        return;
+      }
+
+      const msv = (v) => { const n = parseInt((v || '').replace(/,/g, '')); return isNaN(n) ? '' : n.toLocaleString(); };
+      const dateShort = (v) => { if (!v) return ''; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); };
+      const esc = (v) => (v || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      tbody.innerHTML = filtered.slice(0, 500).map(r => `
+        <tr>
+          <td class="url"><a href="${esc(r[COLS.url])}" target="_blank" rel="noopener" title="${esc(r[COLS.url])}">${esc(r[COLS.url]) || '—'}</a></td>
+          <td>${esc(r[COLS.cluster]) || '—'}</td>
+          <td>${esc(r[COLS.kw]) || '—'}</td>
+          <td class="msv">${msv(r[COLS.msv]) || '—'}</td>
+          <td>${esc(r[COLS.products]) || '—'}</td>
+          <td>${esc(r[COLS.bu]) || '—'}</td>
+          <td>${phaseBadge(r[COLS.phase]) || '—'}</td>
+          <td>${dateShort(r[COLS.date]) || '—'}</td>
+        </tr>`).join('');
+    }
+
+    function clearFilters() {
+      document.getElementById('search').value = '';
+      ['f-cluster','f-products','f-bu','f-phase'].forEach(id => document.getElementById(id).value = '');
+      applyFilters();
+    }
+  </script>
+</body>
+</html>
