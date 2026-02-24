@@ -156,6 +156,7 @@
       const lh = headers.map(h => h.toLowerCase().trim());
       filterColIdxs = FILTER_COLS.map(name => lh.findIndex(h => h.includes(name))).filter(i => i >= 0);
       searchColIdxs = SEARCH_COLS.map(name => lh.findIndex(h => h.includes(name))).filter(i => i >= 0);
+      console.log('filterColIdxs:', filterColIdxs.map(i => `${i}=${headers[i]}`));
       // Default: show first 10 columns
       visibleCols = headers.map((_, i) => i).slice(0, 10);
       activeFilters = {};
