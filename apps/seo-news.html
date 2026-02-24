@@ -55,18 +55,12 @@
     async function loadFeed({ id, url }) {
       const el = document.getElementById(id);
       try {
-        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const res = await fetch(proxy);
+        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&count=10`);
         const data = await res.json();
-        const xml = new DOMParser().parseFromString(data.contents, 'text/xml');
-        const items = [...xml.querySelectorAll('item')].slice(0, 10);
-        if (!items.length) throw new Error('No items');
-        el.innerHTML = items.map(item => {
-          const title = item.querySelector('title')?.textContent || '';
-          const link  = item.querySelector('link')?.textContent || item.querySelector('guid')?.textContent || '#';
-          const date  = item.querySelector('pubDate')?.textContent || '';
-          const d = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          return `<div class="feed-item"><a href="${link}" target="_blank" rel="noopener">${title}</a>${d ? `<span class="date">${d}</span>` : ''}</div>`;
+        if (data.status !== 'ok' || !data.items.length) throw new Error('Bad response');
+        el.innerHTML = data.items.map(item => {
+          const d = item.pubDate ? new Date(item.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          return `<div class="feed-item"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a>${d ? `<span class="date">${d}</span>` : ''}</div>`;
         }).join('');
       } catch(e) {
         el.innerHTML = `<div class="error">Failed to load feed.</div>`;
