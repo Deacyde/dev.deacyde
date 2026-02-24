@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Competitor Content Feed | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .input-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .domain-input { flex: 1; min-width: 200px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none; }
+    .domain-input:focus { border-color: #4285f4; }
+    .domain-input::placeholder { color: #555; }
+    select { padding: 0.65rem 0.75rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none; cursor: pointer; }
+    select:focus { border-color: #4285f4; }
+    .btn { padding: 0.65rem 1.5rem; background: #4285f4; border: none; border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #3367d6; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-clear { padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.9rem; cursor: pointer; }
+    .btn-clear:hover { color: #fff; border-color: #666; }
+    .btn-export { padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid #333; background: #1a1a1a; color: #aaa; font-size: 0.8rem; cursor: pointer; }
+    .btn-export:hover { background: #4285f4; border-color: #4285f4; color: #fff; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 700; }
+    .stat-label { font-size: 0.78rem; color: #888; margin-top: 0.25rem; }
+    .stat-total .stat-num { color: #fff; }
+    .stat-dates .stat-num { color: #4ade80; }
+    .stat-sitemaps .stat-num { color: #60a5fa; }
+    .stat-range .stat-num { color: #fbbf24; font-size: 0.95rem; }
+    .progress { font-size: 0.82rem; color: #888; margin-bottom: 1rem; min-height: 1.2rem; }
+    .progress.error { color: #f87171; }
+    .progress.success { color: #4ade80; }
+    .warning { background: #3a2a00; border: 1px solid #5a4a20; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.85rem; color: #fbbf24; margin-bottom: 1rem; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+    .search-small { padding: 0.4rem 0.75rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 0.82rem; outline: none; min-width: 220px; }
+    .search-small:focus { border-color: #4285f4; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.65rem 1rem; font-size: 0.78rem; color: #666; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 0.05em; background: #0d0d0d; position: sticky; top: 0; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+    tr:hover td { background: #111; }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+    .badge-blog { background: #14532d; color: #4ade80; }
+    .badge-product { background: #1e3a5f; color: #60a5fa; }
+    .badge-category { background: #3a2a00; color: #fbbf24; }
+    .badge-page { background: #2a1a2a; color: #d946ef; }
+    .badge-news { background: #1a2a2a; color: #2dd4bf; }
+    .badge-freq { background: #1e3a5f; color: #60a5fa; }
+    .badge-other { background: #222; color: #888; }
+    .link-url { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .link-url a { color: #4dabf7; text-decoration: none; }
+    .link-url a:hover { text-decoration: underline; }
+    .empty { text-align: center; color: #555; padding: 3rem; }
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .link-url { max-width: 200px; }
+      td, th { padding: 0.5rem 0.5rem; font-size: 0.78rem; }
+      .input-row { flex-direction: column; }
+      .domain-input { min-width: unset; }
+      .filters { flex-direction: column; align-items: stretch; }
+      .search-small { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+  <a href="../" class="back">← Back to Home</a>
+  <h1>📡 Competitor Content Feed</h1>
+  <p class="subtitle">Fetch a competitor's sitemap and view their most recently published URLs</p>
+
+  <div class="input-row">
+    <input class="domain-input" id="domain-input" type="text" placeholder="Enter domain (e.g. searchengineland.com)" />
+    <select id="limit-select">
+      <option value="20" selected>Show 20</option>
+      <option value="50">Show 50</option>
+      <option value="100">Show 100</option>
+      <option value="all">Show All</option>
+    </select>
+    <button class="btn" id="fetch-btn" onclick="fetchSitemap()">Fetch Sitemap</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <div id="results" style="display:none;">
+    <div id="warnings"></div>
+
+    <div class="stats">
+      <div class="stat stat-total"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total URLs Found</div></div>
+      <div class="stat stat-dates"><div class="stat-num" id="s-dates">0</div><div class="stat-label">With Dates</div></div>
+      <div class="stat stat-sitemaps"><div class="stat-num" id="s-sitemaps">0</div><div class="stat-label">Sitemaps Parsed</div></div>
+      <div class="stat stat-range"><div class="stat-num" id="s-range">—</div><div class="stat-label">Date Range</div></div>
+    </div>
+
+    <div class="filters">
+      <input class="search-small" type="text" placeholder="Filter by URL keyword..." oninput="filterResults(this.value)" />
+      <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>URL</th>
+          <th>Last Modified</th>
+          <th>Frequency</th>
+          <th>Priority</th>
+          <th>Content Type</th>
+        </tr>
+      </thead>
+      <tbody id="url-body"></tbody>
+    </table>
+    <div id="no-urls" class="empty" style="display:none;">No URLs match your filter.</div>
+  </div>
+
+  <script>
+    const PROXY = 'https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=';
+    const MAX_URLS = 5000;
+    const MAX_CHILD_SITEMAPS = 5;
+    const COMMON_SITEMAP_PATHS = ['/sitemap.xml', '/sitemap_index.xml', '/wp-sitemap.xml', '/sitemap/sitemap-index.xml', '/post-sitemap.xml'];
+
+    let allUrls = [];
+    let currentSearch = '';
+    let sitemapsParsed = 0;
+    let hitUrlLimit = false;
+
+    document.getElementById('domain-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchSitemap();
+    });
+
+    function setProgress(text, type) {
+      const el = document.getElementById('progress');
+      el.className = 'progress' + (type ? ' ' + type : '');
+      el.textContent = text;
+    }
+
+    function normalizeDomain(input) {
+      let d = input.trim().replace(/\/+$/, '');
+      d = d.replace(/^https?:\/\//, '');
+      d = d.replace(/^www\./, '');
+      return d;
+    }
+
+    async function proxyFetch(url) {
+      const res = await fetch(PROXY + encodeURIComponent(url));
+      const data = await res.json();
+      return data.contents || '';
+    }
+
+    function parseUrlsFromSitemap(xml) {
+      const urls = [];
+      const urlRegex = /<url>([\s\S]*?)<\/url>/gi;
+      let match;
+      while ((match = urlRegex.exec(xml)) !== null) {
+        const block = match[1];
+        const loc = (block.match(/<loc>([\s\S]*?)<\/loc>/i) || [])[1] || '';
+        const lastmod = (block.match(/<lastmod>([\s\S]*?)<\/lastmod>/i) || [])[1] || '';
+        const changefreq = (block.match(/<changefreq>([\s\S]*?)<\/changefreq>/i) || [])[1] || '';
+        const priority = (block.match(/<priority>([\s\S]*?)<\/priority>/i) || [])[1] || '';
+        if (loc) urls.push({ loc: loc.trim(), lastmod: lastmod.trim(), changefreq: changefreq.trim(), priority: priority.trim() });
+      }
+      return urls;
+    }
+
+    function getChildSitemapLocs(xml) {
+      const locs = [];
+      const sitemapRegex = /<sitemap>([\s\S]*?)<\/sitemap>/gi;
+      let match;
+      while ((match = sitemapRegex.exec(xml)) !== null) {
+        const loc = (match[1].match(/<loc>([\s\S]*?)<\/loc>/i) || [])[1] || '';
+        if (loc) locs.push(loc.trim());
+      }
+      return locs;
+    }
+
+    function isSitemapXml(contents) {
+      return contents.includes('<urlset') || contents.includes('<sitemapindex');
+    }
+
+    async function fetchAndParseSitemap(url) {
+      if (allUrls.length >= MAX_URLS) return;
+      if (url.endsWith('.gz')) return; // skip compressed
+      setProgress(`⏳ Fetching ${url}...`);
+      let contents;
+      try {
+        contents = await proxyFetch(url);
+      } catch (e) {
+        return;
+      }
+      if (!contents || !isSitemapXml(contents)) return;
+
+      sitemapsParsed++;
+
+      // Check if it's a sitemap index
+      const children = getChildSitemapLocs(contents);
+      if (children.length > 0) {
+        const limited = children.slice(0, MAX_CHILD_SITEMAPS);
+        for (const childUrl of limited) {
+          if (allUrls.length >= MAX_URLS) { hitUrlLimit = true; break; }
+          await fetchAndParseSitemap(childUrl);
+        }
+        // Also parse any <url> entries in the index itself
+        const directUrls = parseUrlsFromSitemap(contents);
+        const remaining = MAX_URLS - allUrls.length;
+        allUrls.push(...directUrls.slice(0, remaining));
+        return;
+      }
+
+      const urls = parseUrlsFromSitemap(contents);
+      const remaining = MAX_URLS - allUrls.length;
+      if (urls.length > remaining) hitUrlLimit = true;
+      allUrls.push(...urls.slice(0, remaining));
+    }
+
+    async function fetchSitemap() {
+      const domain = normalizeDomain(document.getElementById('domain-input').value);
+      if (!domain) return;
+
+      const btn = document.getElementById('fetch-btn');
+      btn.disabled = true;
+      allUrls = [];
+      sitemapsParsed = 0;
+      hitUrlLimit = false;
+      currentSearch = '';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('warnings').innerHTML = '';
+
+      const baseUrl = 'https://' + domain;
+      let sitemapUrls = [];
+      let skippedGz = [];
+
+      // Step 1: Try robots.txt
+      setProgress('⏳ Checking robots.txt...');
+      try {
+        const robotsTxt = await proxyFetch(baseUrl + '/robots.txt');
+        if (robotsTxt) {
+          const lines = robotsTxt.split('\n');
+          for (const line of lines) {
+            const m = line.match(/^Sitemap:\s*(.+)/i);
+            if (m) {
+              const url = m[1].trim();
+              if (url.endsWith('.gz')) {
+                skippedGz.push(url);
+              } else {
+                sitemapUrls.push(url);
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Step 2: If no sitemaps from robots.txt, try common paths
+      if (sitemapUrls.length === 0) {
+        setProgress('⏳ Trying common sitemap paths...');
+        for (const path of COMMON_SITEMAP_PATHS) {
+          const url = baseUrl + path;
+          setProgress(`⏳ Trying ${url}...`);
+          try {
+            const contents = await proxyFetch(url);
+            if (contents && isSitemapXml(contents)) {
+              sitemapUrls.push(url);
+              break; // found one, use it
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (sitemapUrls.length === 0) {
+        let msg = '❌ No sitemap found. Checked robots.txt and common sitemap paths.';
+        if (skippedGz.length > 0) {
+          msg += ` Found ${skippedGz.length} compressed (.xml.gz) sitemap(s) which cannot be processed in-browser.`;
+        }
+        setProgress(msg, 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      // Step 3: Fetch and parse all found sitemaps
+      for (const url of sitemapUrls) {
+        if (allUrls.length >= MAX_URLS) { hitUrlLimit = true; break; }
+        await fetchAndParseSitemap(url);
+      }
+
+      btn.disabled = false;
+
+      if (allUrls.length === 0) {
+        setProgress('❌ Sitemaps were found but contained no URLs.', 'error');
+        return;
+      }
+
+      setProgress(`✅ Done! Found ${allUrls.length} URLs from ${sitemapsParsed} sitemap(s).`, 'success');
+      displayResults(skippedGz);
+    }
+
+    function inferContentType(url) {
+      const path = url.toLowerCase();
+      if (/\/blog[s]?\//.test(path) || /\/article[s]?\//.test(path) || /\/post[s]?\//.test(path)) return { label: 'Blog', cls: 'badge-blog' };
+      if (/\/news\//.test(path) || /\/press\//.test(path)) return { label: 'News', cls: 'badge-news' };
+      if (/\/product[s]?\//.test(path) || /\/shop\//.test(path) || /\/item[s]?\//.test(path)) return { label: 'Product', cls: 'badge-product' };
+      if (/\/categor(y|ies)\//.test(path) || /\/tag[s]?\//.test(path) || /\/topic[s]?\//.test(path)) return { label: 'Category', cls: 'badge-category' };
+      if (/\/page[s]?\//.test(path) || /\/about/.test(path) || /\/contact/.test(path) || /\/faq/.test(path)) return { label: 'Page', cls: 'badge-page' };
+      return { label: 'Other', cls: 'badge-other' };
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch (e) { return dateStr; }
+    }
+
+    function displayResults(skippedGz) {
+      const warnings = document.getElementById('warnings');
+      let warningHtml = '';
+
+      const withDates = allUrls.filter(u => u.lastmod);
+      const noDates = withDates.length === 0;
+
+      if (noDates) {
+        warningHtml += '<div class="warning">⚠️ No lastmod dates found in the sitemap. URLs are sorted alphabetically instead.</div>';
+        allUrls.sort((a, b) => a.loc.localeCompare(b.loc));
+      } else {
+        allUrls.sort((a, b) => {
+          if (!a.lastmod && !b.lastmod) return 0;
+          if (!a.lastmod) return 1;
+          if (!b.lastmod) return -1;
+          return new Date(b.lastmod) - new Date(a.lastmod);
+        });
+      }
+
+      if (hitUrlLimit) {
+        warningHtml += `<div class="warning">⚠️ URL limit reached. Only the first ${MAX_URLS.toLocaleString()} URLs are shown. The sitemap may contain more.</div>`;
+      }
+
+      if (skippedGz && skippedGz.length > 0) {
+        warningHtml += `<div class="warning">⚠️ Skipped ${skippedGz.length} compressed sitemap(s) (.xml.gz) — these can't be decompressed in-browser.</div>`;
+      }
+
+      warnings.innerHTML = warningHtml;
+
+      // Stats
+      document.getElementById('s-total').textContent = allUrls.length;
+      document.getElementById('s-dates').textContent = withDates.length;
+      document.getElementById('s-sitemaps').textContent = sitemapsParsed;
+
+      if (withDates.length > 0) {
+        const dates = withDates.map(u => new Date(u.lastmod)).filter(d => !isNaN(d.getTime())).sort((a, b) => a - b);
+        if (dates.length > 0) {
+          const oldest = dates[0].toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          const newest = dates[dates.length - 1].toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          document.getElementById('s-range').textContent = oldest === newest ? newest : `${oldest} → ${newest}`;
+        } else {
+          document.getElementById('s-range').textContent = '—';
+        }
+      } else {
+        document.getElementById('s-range').textContent = '—';
+      }
+
+      document.getElementById('results').style.display = 'block';
+      renderTable();
+    }
+
+    function getDisplayUrls() {
+      let urls = allUrls;
+      if (currentSearch) {
+        const q = currentSearch.toLowerCase();
+        urls = urls.filter(u => u.loc.toLowerCase().includes(q));
+      }
+      const limitVal = document.getElementById('limit-select').value;
+      if (limitVal !== 'all') {
+        urls = urls.slice(0, parseInt(limitVal));
+      }
+      return urls;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('url-body');
+      const noUrls = document.getElementById('no-urls');
+      const urls = getDisplayUrls();
+
+      if (!urls.length) {
+        tbody.innerHTML = '';
+        noUrls.style.display = 'block';
+        return;
+      }
+      noUrls.style.display = 'none';
+
+      tbody.innerHTML = urls.map((u, i) => {
+        const ct = inferContentType(u.loc);
+        const displayUrl = u.loc.length > 80 ? u.loc.slice(0, 80) + '…' : u.loc;
+        const escaped = u.loc.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        const displayEscaped = displayUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        return `<tr>
+          <td style="color:#555">${i + 1}</td>
+          <td class="link-url"><a href="${escaped}" target="_blank" rel="noopener" title="${escaped}">${displayEscaped}</a></td>
+          <td style="white-space:nowrap;color:${u.lastmod ? '#ccc' : '#555'}">${u.lastmod ? formatDate(u.lastmod) : '—'}</td>
+          <td>${u.changefreq ? `<span class="badge badge-freq">${u.changefreq}</span>` : '<span style="color:#555">—</span>'}</td>
+          <td style="color:#aaa">${u.priority || '<span style="color:#555">—</span>'}</td>
+          <td><span class="badge ${ct.cls}">${ct.label}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function filterResults(q) {
+      currentSearch = q;
+      renderTable();
+    }
+
+    document.getElementById('limit-select').addEventListener('change', renderTable);
+
+    function exportCSV() {
+      const urls = getDisplayUrls();
+      if (!urls.length) return;
+      const rows = [['#', 'URL', 'Last Modified', 'Change Frequency', 'Priority', 'Content Type']];
+      urls.forEach((u, i) => {
+        const ct = inferContentType(u.loc);
+        rows.push([i + 1, u.loc, u.lastmod || '', u.changefreq || '', u.priority || '', ct.label]);
+      });
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'competitor-feed.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function clearAll() {
+      document.getElementById('domain-input').value = '';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('progress').textContent = '';
+      document.getElementById('progress').className = 'progress';
+      document.getElementById('warnings').innerHTML = '';
+      allUrls = [];
+      sitemapsParsed = 0;
+      currentSearch = '';
+    }
+  </script>
+</body>
+</html>
