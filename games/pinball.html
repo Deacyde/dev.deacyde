@@ -6,63 +6,128 @@
     <title>SEO Pinball | Deacyde.com</title>
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--bg:#0a0a0f;--surface:#1a1a24;--border:#2a2a3a;--text:#e4e4ed;--text-muted:#9494a8;--accent:#6c63ff;--font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+        :root{
+            --bg:#0a0f1e;--surface:#0d1530;--border:#1a2a4a;
+            --text:#e4e4ed;--text-muted:#7a8ba8;
+            --green:#00ff88;--cyan:#00d4ff;--amber:#ffaa00;--red:#ff4444;
+            --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+            --mono:'JetBrains Mono','Space Mono',monospace
+        }
         body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;user-select:none}
+        .outer-wrapper{display:flex;gap:12px;align-items:flex-start;justify-content:center}
         .game-wrapper{width:400px;max-width:100vw}
         .top-bar{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;margin-bottom:.5rem}
-        .top-bar a{color:var(--text-muted);text-decoration:none;font-size:.82rem}
-        .top-bar a:hover{color:var(--text)}
-        .top-bar h1{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
-        .top-bar h1 span{color:var(--accent)}
-        .hud{display:flex;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;margin-bottom:.5rem;font-size:.82rem;color:var(--text-muted)}
-        .hud strong{color:var(--text)}
+        .top-bar a{color:var(--text-muted);text-decoration:none;font-size:.82rem;font-family:var(--mono)}
+        .top-bar a:hover{color:var(--green)}
+        .top-bar h1{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;font-family:var(--mono)}
+        .top-bar h1 span{color:var(--green)}
+        .hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:.5rem}
+        .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;text-align:center}
+        .kpi-card .kpi-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-family:var(--mono);margin-bottom:2px}
+        .kpi-card .kpi-value{font-size:1rem;font-weight:800;font-family:var(--mono);color:var(--green)}
+        .kpi-card .kpi-value.cyan{color:var(--cyan)}
+        .kpi-card .kpi-value.amber{color:var(--amber)}
+        .da-meter{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:.5rem}
+        .da-meter-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-family:var(--mono);margin-bottom:4px;display:flex;justify-content:space-between}
+        .da-meter-bar{height:8px;background:#1a2a4a;border-radius:4px;overflow:hidden}
+        .da-meter-fill{height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .3s;box-shadow:0 0 8px var(--green)}
         .canvas-container{position:relative}
         canvas{display:block;border:1px solid var(--border);border-radius:8px;background:var(--surface);touch-action:none}
-        .overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,15,.88);border-radius:8px;gap:1rem;pointer-events:auto;z-index:10}
+        .overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,15,30,.92);border-radius:8px;gap:1rem;pointer-events:auto;z-index:10;backdrop-filter:blur(4px)}
         .overlay.hidden{display:none}
-        .overlay h2{font-size:1.6rem;font-weight:800}
-        .overlay p{color:var(--text-muted);font-size:.9rem;text-align:center;max-width:300px}
-        .play-btn{padding:.75rem 2rem;font-family:var(--font);font-size:1rem;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;transition:transform .2s,box-shadow .2s}
-        .play-btn:hover{transform:scale(1.05);box-shadow:0 0 20px rgba(108,99,255,.4)}
-        .final-score{font-size:3rem;font-weight:800;color:var(--accent)}
-        .controls-hint{text-align:center;color:var(--text-muted);font-size:.75rem;margin-top:.5rem}
-        .multiplier-bar{display:flex;gap:4px;justify-content:center;margin-bottom:.5rem}
-        .mult-pip{width:20px;height:6px;border-radius:3px;background:#2a2a3a;transition:background .3s}
-        .mult-pip.active{background:var(--accent)}
+        .overlay h2{font-size:1.6rem;font-weight:800;font-family:var(--mono)}
+        .overlay h2.deindexed{color:var(--red);text-shadow:0 0 20px rgba(255,68,68,.5)}
+        .overlay p{color:var(--text-muted);font-size:.85rem;text-align:center;max-width:300px;font-family:var(--mono)}
+        .play-btn{padding:.75rem 2rem;font-family:var(--mono);font-size:.9rem;font-weight:700;background:transparent;color:var(--green);border:2px solid var(--green);border-radius:6px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.1em}
+        .play-btn:hover{background:var(--green);color:var(--bg);box-shadow:0 0 20px rgba(0,255,136,.3)}
+        .final-score{font-size:2.5rem;font-weight:800;color:var(--cyan);font-family:var(--mono)}
+        .final-label{font-size:.7rem;color:var(--amber);font-family:var(--mono);text-transform:uppercase;letter-spacing:.15em}
+        .controls-hint{text-align:center;color:var(--text-muted);font-size:.68rem;margin-top:.5rem;font-family:var(--mono)}
+        .side-panel{width:160px;display:flex;flex-direction:column;gap:6px;padding-top:2.5rem}
+        .side-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+        .side-card .side-label{font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-family:var(--mono);margin-bottom:3px}
+        .side-card .side-value{font-size:.85rem;font-weight:700;font-family:var(--mono);color:var(--text)}
+        .side-card .side-value.green{color:var(--green)}
+        .side-card .side-value.cyan{color:var(--cyan)}
+        .side-card .side-value.amber{color:var(--amber)}
+        .side-card .side-value.red{color:var(--red)}
+        .keyword-score-card .side-value{color:var(--green)}
+        @media(max-width:600px){
+            .outer-wrapper{flex-direction:column;align-items:center}
+            .side-panel{flex-direction:row;flex-wrap:wrap;width:100%;max-width:400px;padding-top:0;margin-top:.5rem}
+            .side-card{flex:1;min-width:70px}
+        }
         @media(max-width:420px){.game-wrapper{width:100vw;padding:0 4px}canvas{border-radius:4px}}
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="outer-wrapper">
 <div class="game-wrapper">
     <div class="top-bar">
         <a href="../index.html">&larr; Deacyde.com</a>
         <h1>SEO <span>Pinball</span></h1>
     </div>
     <div class="hud">
-        <div>Score: <strong id="scoreDisplay">0</strong></div>
-        <div>Balls: <strong id="ballsDisplay">3</strong></div>
-        <div>Multi: <strong id="multiDisplay">1x</strong></div>
+        <div class="kpi-card">
+            <div class="kpi-label">Domain Rating</div>
+            <div class="kpi-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Organic Sessions</div>
+            <div class="kpi-value cyan" id="ballsDisplay">3</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Crawl Score</div>
+            <div class="kpi-value amber" id="multiDisplay">1x</div>
+        </div>
     </div>
-    <div class="multiplier-bar" id="multBar"></div>
+    <div class="da-meter">
+        <div class="da-meter-label">
+            <span>DA Meter</span>
+            <span id="daValue">0 / 100</span>
+        </div>
+        <div class="da-meter-bar">
+            <div class="da-meter-fill" id="daFill"></div>
+        </div>
+    </div>
     <div class="canvas-container">
         <canvas id="game" width="400" height="700"></canvas>
         <div class="overlay" id="startOverlay">
-            <h2>🎯 SEO Pinball</h2>
-            <p>Launch the ball &middot; Hit targets &middot; Rank #1!</p>
-            <p style="font-size:.75rem;color:#666">Z / Left = Left Flipper &middot; M / Right = Right Flipper<br>Space / Down = Launch</p>
-            <button class="play-btn" id="startBtn">Play</button>
+            <h2>&#128269; SEO Pinball</h2>
+            <p>Launch the crawler &middot; Hit keywords &middot; Rank #1!</p>
+            <p style="font-size:.65rem;color:var(--text-muted)">Z / Left = On-Page &middot; M / Right = Off-Page<br>Space / Down = Launch Crawler</p>
+            <button class="play-btn" id="startBtn">Recrawl</button>
         </div>
         <div class="overlay hidden" id="gameOverOverlay">
-            <h2>Game Over</h2>
+            <h2 class="deindexed">Deindexed.</h2>
             <div class="final-score" id="finalScore">0</div>
-            <p>Final Score</p>
-            <button class="play-btn" id="restartBtn">Play Again</button>
+            <div class="final-label">Authority Leader</div>
+            <button class="play-btn" id="restartBtn">Recrawl</button>
         </div>
     </div>
-    <p class="controls-hint">Z/Left = Left Flipper &middot; M/Right = Right Flipper &middot; Space = Launch &middot; Touch sides to flip</p>
+    <p class="controls-hint">Z/&#8592; = On-Page &middot; M/&#8594; = Off-Page &middot; Space = Launch &middot; Touch sides to flip</p>
+</div>
+<div class="side-panel" id="sidePanel">
+    <div class="side-card">
+        <div class="side-label">Bounce Rate</div>
+        <div class="side-value red" id="bounceRate">0%</div>
+    </div>
+    <div class="side-card">
+        <div class="side-label">Pages Crawled</div>
+        <div class="side-value cyan" id="pagesCrawled">0</div>
+    </div>
+    <div class="side-card">
+        <div class="side-label">Backlinks Earned</div>
+        <div class="side-value green" id="backlinksEarned">0</div>
+    </div>
+    <div class="side-card keyword-score-card">
+        <div class="side-label">Keyword Score</div>
+        <div class="side-value" id="keywordScore">0</div>
+    </div>
+</div>
 </div>
 <script>
 const canvas = document.getElementById('game');
@@ -88,22 +153,22 @@ const FLIPPER_Y = H - 80;
 const FLIPPER_L_X = 115;
 const FLIPPER_R_X = W - 115;
 
-// SEO Bumpers
+// SEO Keyword Bumpers
 const bumpers = [
-    { x: W/2,     y: 180, r: 22, label: 'DA',   color: '#ff6b6b', score: 100, hits: 0 },
-    { x: W/2-70,  y: 230, r: 18, label: 'PA',   color: '#48dbfb', score: 75,  hits: 0 },
-    { x: W/2+70,  y: 230, r: 18, label: 'TF',   color: '#1dd1a1', score: 75,  hits: 0 },
-    { x: W/2-40,  y: 310, r: 16, label: 'CTR',  color: '#feca57', score: 50,  hits: 0 },
-    { x: W/2+40,  y: 310, r: 16, label: 'CWV',  color: '#a29bfe', score: 50,  hits: 0 },
-    { x: W/2,     y: 380, r: 20, label: 'E-E-A-T', color: '#ff9f43', score: 150, hits: 0 },
+    { x: W/2,     y: 180, r: 22, label: 'long-tail',      color: '#00ff88', score: 100, hits: 0 },
+    { x: W/2-70,  y: 230, r: 18, label: 'seed kw',        color: '#00d4ff', score: 75,  hits: 0 },
+    { x: W/2+70,  y: 230, r: 18, label: 'LSI',            color: '#00ff88', score: 75,  hits: 0 },
+    { x: W/2-40,  y: 310, r: 16, label: 'intent',         color: '#ffaa00', score: 50,  hits: 0 },
+    { x: W/2+40,  y: 310, r: 16, label: 'entity',         color: '#00d4ff', score: 50,  hits: 0 },
+    { x: W/2,     y: 380, r: 20, label: 'E-E-A-T',        color: '#ffaa00', score: 150, hits: 0 },
 ];
 
-// Target lanes (top)
+// Target lanes - SERP snippets
 const targets = [
-    { x: 80,  y: 100, w: 40, h: 14, label: 'META',    color: '#48dbfb', score: 200, hit: false },
-    { x: 140, y: 100, w: 40, h: 14, label: 'H1',      color: '#1dd1a1', score: 200, hit: false },
-    { x: 200, y: 100, w: 40, h: 14, label: 'SCHEMA',  color: '#feca57', score: 200, hit: false },
-    { x: 260, y: 100, w: 40, h: 14, label: 'LINKS',   color: '#a29bfe', score: 200, hit: false },
+    { x: 80,  y: 100, w: 40, h: 14, label: 'META',    color: '#00d4ff', score: 200, hit: false },
+    { x: 140, y: 100, w: 40, h: 14, label: 'H1',      color: '#00ff88', score: 200, hit: false },
+    { x: 200, y: 100, w: 40, h: 14, label: 'SCHEMA',  color: '#ffaa00', score: 200, hit: false },
+    { x: 260, y: 100, w: 40, h: 14, label: 'LINKS',   color: '#00d4ff', score: 200, hit: false },
 ];
 
 // Slingshots
@@ -114,9 +179,33 @@ const slings = [
 
 // Rollover lanes
 const rollovers = [
-    { x: W/2-50, y: 140, r: 8, label: 'K', fullLabel: 'Keyword', color: '#ff6b6b', score: 50, lit: false },
-    { x: W/2,    y: 155, r: 8, label: 'R', fullLabel: 'Ranking', color: '#48dbfb', score: 50, lit: false },
-    { x: W/2+50, y: 140, r: 8, label: 'S', fullLabel: 'SERP',   color: '#1dd1a1', score: 50, lit: false },
+    { x: W/2-50, y: 140, r: 8, label: 'K', fullLabel: 'Keyword', color: '#00ff88', score: 50, lit: false },
+    { x: W/2,    y: 155, r: 8, label: 'R', fullLabel: 'Ranking', color: '#00d4ff', score: 50, lit: false },
+    { x: W/2+50, y: 140, r: 8, label: 'S', fullLabel: 'SERP',   color: '#ffaa00', score: 50, lit: false },
+];
+
+// Backlink web nodes
+const backlinkNodes = [
+    { x: 60,  y: 58,  r: 6, lit: false, timer: 0 },
+    { x: 120, y: 48,  r: 5, lit: false, timer: 0 },
+    { x: 180, y: 63,  r: 7, lit: false, timer: 0 },
+    { x: 240, y: 53,  r: 5, lit: false, timer: 0 },
+    { x: 300, y: 58,  r: 6, lit: false, timer: 0 },
+    { x: 90,  y: 82,  r: 4, lit: false, timer: 0 },
+    { x: 150, y: 78,  r: 5, lit: false, timer: 0 },
+    { x: 210, y: 83,  r: 4, lit: false, timer: 0 },
+    { x: 270, y: 78,  r: 5, lit: false, timer: 0 },
+    { x: 330, y: 73,  r: 4, lit: false, timer: 0 },
+];
+const backlinkEdges = [
+    [0,1],[1,2],[2,3],[3,4],[0,5],[1,6],[2,7],[3,8],[4,9],[5,6],[6,7],[7,8],[8,9],[5,2],[6,3]
+];
+
+// Boss targets (algorithm updates)
+const bossTargets = [
+    { x: 50,  y: 440, w: 60, h: 24, label: 'Panda',   hp: 3, maxHp: 3, color: '#ff6b6b', defeated: false },
+    { x: W/2-30, y: 460, w: 60, h: 24, label: 'Penguin', hp: 3, maxHp: 3, color: '#ff9f43', defeated: false },
+    { x: W-110, y: 440, w: 60, h: 24, label: 'HCU',     hp: 3, maxHp: 3, color: '#a29bfe', defeated: false },
 ];
 
 // State
@@ -136,19 +225,51 @@ let particles = [];
 let flashTexts = [];
 let shakeTimer = 0;
 
+// New visual state
+let ballTrail = [];
+let matrixChars = [];
+let daValue = 0;
+let coreUpdateFlash = 0;
+let sideStats = { bounceRate: 0, pagesCrawled: 0, backlinksEarned: 0, keywordScore: 0 };
+
+const seoFlashes = ['Indexed!', 'Ranked!', 'Link Earned!', 'Crawled!', '301 Redirect!', 'Canonicalized!'];
+const penaltyFlashes = ['Penalized!', 'Noindex!', 'Disavowed!'];
+
 const keys = {};
 
-// Multiplier bar
-const multBar = document.getElementById('multBar');
-for (let i = 0; i < 10; i++) {
-    const pip = document.createElement('div');
-    pip.className = 'mult-pip';
-    multBar.appendChild(pip);
+// Matrix rain characters
+for (let i = 0; i < 40; i++) {
+    matrixChars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        speed: 0.3 + Math.random() * 0.8,
+        char: String.fromCharCode(0x30A0 + Math.random() * 96),
+        alpha: 0.02 + Math.random() * 0.06
+    });
+}
+
+function updateDAMeter() {
+    daValue = Math.min(100, Math.floor(score / 50));
+    document.getElementById('daValue').textContent = daValue + ' / 100';
+    document.getElementById('daFill').style.width = daValue + '%';
+    if (daValue >= 100 && score > 0) {
+        daValue = 0;
+        score += 500;
+        document.getElementById('scoreDisplay').textContent = score.toLocaleString();
+        flashTexts.push({ text: 'DA 100! BONUS +500', x: W/2, y: H/2, life: 80, color: '#00ff88' });
+        coreUpdateFlash = 30;
+    }
+}
+
+function updateSideStats() {
+    sideStats.bounceRate = Math.max(0, Math.min(99, 85 - Math.floor(score / 100)));
+    document.getElementById('bounceRate').textContent = sideStats.bounceRate + '%';
+    document.getElementById('pagesCrawled').textContent = sideStats.pagesCrawled;
+    document.getElementById('backlinksEarned').textContent = sideStats.backlinksEarned;
+    document.getElementById('keywordScore').textContent = sideStats.keywordScore;
 }
 
 function updateMultBar() {
-    const pips = multBar.querySelectorAll('.mult-pip');
-    pips.forEach((p, i) => p.classList.toggle('active', i < multProgress));
     document.getElementById('multiDisplay').textContent = multiplier + 'x';
 }
 
@@ -156,16 +277,21 @@ function addScore(pts, x, y) {
     const total = pts * multiplier;
     score += total;
     document.getElementById('scoreDisplay').textContent = score.toLocaleString();
-    flashTexts.push({ text: '+' + total, x, y, life: 50, color: '#fff' });
+    const msg = seoFlashes[Math.floor(Math.random() * seoFlashes.length)];
+    flashTexts.push({ text: '+' + total + ' ' + msg, x, y, life: 50, color: '#00ff88' });
     multProgress++;
     if (multProgress >= 10) { multiplier++; multProgress = 0; }
     updateMultBar();
+    sideStats.pagesCrawled++;
+    updateDAMeter();
+    updateSideStats();
 }
 
 function spawnBall() {
     ball = { x: PLUNGER_X, y: H - 100, vx: 0, vy: 0, active: false };
     launching = false;
     launchPower = 0;
+    ballTrail = [];
 }
 
 function launchBall() {
@@ -194,6 +320,9 @@ function pointToSegmentDist(px, py, x1, y1, x2, y2) {
 function updateBall() {
     if (!ball || !ball.active) return;
 
+    ballTrail.push({ x: ball.x, y: ball.y });
+    if (ballTrail.length > 12) ballTrail.shift();
+
     ball.vy += GRAVITY;
     ball.x += ball.vx;
     ball.y += ball.vy;
@@ -221,11 +350,12 @@ function updateBall() {
             ball.vx = nx * Math.max(speed * 1.1, 5);
             ball.vy = ny * Math.max(speed * 1.1, 5);
             b.hits++;
+            sideStats.keywordScore += b.score;
             addScore(b.score, b.x, b.y - b.r - 10);
             shakeTimer = 5;
             for (let i = 0; i < 10; i++) {
                 const a = Math.random() * Math.PI * 2;
-                particles.push({ x: b.x + nx * b.r, y: b.y + ny * b.r, vx: Math.cos(a) * 4, vy: Math.sin(a) * 4, life: 25, color: b.color });
+                particles.push({ x: b.x + nx * b.r, y: b.y + ny * b.r, vx: Math.cos(a) * 4, vy: Math.sin(a) * 4, life: 25, color: '#00ff88' });
             }
         }
     }
@@ -240,7 +370,7 @@ function updateBall() {
             for (let i = 0; i < 6; i++) particles.push({ x: t.x + t.w/2, y: t.y, vx: (Math.random()-.5)*5, vy: -Math.random()*4, life: 20, color: t.color });
             if (targets.every(tt => tt.hit)) {
                 addScore(1000, W / 2, 80);
-                flashTexts.push({ text: 'ALL TARGETS! +1000', x: W/2, y: 70, life: 80, color: '#ffd700' });
+                flashTexts.push({ text: 'ALL SERPS RANKED! +1000', x: W/2, y: 70, life: 80, color: '#ffaa00' });
                 targets.forEach(tt => tt.hit = false);
             }
         }
@@ -255,7 +385,7 @@ function updateBall() {
             addScore(r.score, r.x, r.y - 15);
             if (rollovers.every(rr => rr.lit)) {
                 addScore(500, W/2, 130);
-                flashTexts.push({ text: 'K-R-S BONUS! +500', x: W/2, y: 120, life: 80, color: '#ffd700' });
+                flashTexts.push({ text: 'K-R-S BONUS! +500', x: W/2, y: 120, life: 80, color: '#ffaa00' });
                 rollovers.forEach(rr => rr.lit = false);
             }
         }
@@ -272,7 +402,9 @@ function updateBall() {
             ball.vx = nx * 6;
             ball.vy = ny * 6;
             addScore(25, res.cx, res.cy - 10);
-            for (let i = 0; i < 5; i++) particles.push({ x: res.cx, y: res.cy, vx: nx*3+Math.random()*2-1, vy: ny*3+Math.random()*2-1, life: 15, color: '#6c63ff' });
+            sideStats.backlinksEarned++;
+            updateSideStats();
+            for (let i = 0; i < 5; i++) particles.push({ x: res.cx, y: res.cy, vx: nx*3+Math.random()*2-1, vy: ny*3+Math.random()*2-1, life: 15, color: '#00d4ff' });
         }
     }
 
@@ -294,9 +426,47 @@ function updateBall() {
     flipperCollide(FLIPPER_L_X, leftFlipperAngle);
     flipperCollide(FLIPPER_R_X, rightFlipperAngle);
 
+    // Backlink web node activation
+    for (const node of backlinkNodes) {
+        const dx = ball.x - node.x, dy = ball.y - node.y;
+        if (Math.sqrt(dx*dx + dy*dy) < BALL_R + node.r + 15) {
+            if (!node.lit) {
+                node.lit = true;
+                node.timer = 120;
+                sideStats.backlinksEarned++;
+                addScore(30, node.x, node.y - 10);
+            }
+        }
+    }
+
+    // Boss target collisions
+    for (const boss of bossTargets) {
+        if (boss.defeated) continue;
+        if (ball.x + BALL_R > boss.x && ball.x - BALL_R < boss.x + boss.w &&
+            ball.y + BALL_R > boss.y && ball.y - BALL_R < boss.y + boss.h) {
+            boss.hp--;
+            ball.vy = -Math.abs(ball.vy) * 0.9;
+            ball.vy -= 2;
+            shakeTimer = 4;
+            if (boss.hp <= 0) {
+                boss.defeated = true;
+                coreUpdateFlash = 40;
+                addScore(500, boss.x + boss.w/2, boss.y - 20);
+                flashTexts.push({ text: 'CORE UPDATE! ' + boss.label + ' defeated!', x: W/2, y: H/2, life: 80, color: '#ff6b6b' });
+                for (let i = 0; i < 15; i++) {
+                    const a = Math.random() * Math.PI * 2;
+                    particles.push({ x: boss.x + boss.w/2, y: boss.y + boss.h/2, vx: Math.cos(a)*6, vy: Math.sin(a)*6, life: 35, color: boss.color });
+                }
+            } else {
+                const msg = penaltyFlashes[Math.floor(Math.random() * penaltyFlashes.length)];
+                flashTexts.push({ text: msg, x: boss.x + boss.w/2, y: boss.y - 10, life: 40, color: '#ff6b6b' });
+                for (let i = 0; i < 5; i++) particles.push({ x: boss.x + boss.w/2, y: boss.y, vx: (Math.random()-.5)*4, vy: -Math.random()*3, life: 20, color: boss.color });
+            }
+        }
+    }
+
     // Angled gutters near drain
     const gutterY1 = FLIPPER_Y + 15, gutterY2 = DRAIN_Y;
-    // Left gutter
     {
         const gx1 = TABLE_L, gy1 = gutterY1, gx2 = FLIPPER_L_X - 30, gy2 = gutterY2;
         const res = pointToSegmentDist(ball.x, ball.y, gx1, gy1, gx2, gy2);
@@ -310,7 +480,6 @@ function updateBall() {
             ball.vy -= 1.5 * dot * ny;
         }
     }
-    // Right gutter
     {
         const gx1 = TABLE_R, gy1 = gutterY1, gx2 = FLIPPER_R_X + 30, gy2 = gutterY2;
         const res = pointToSegmentDist(ball.x, ball.y, gx1, gy1, gx2, gy2);
@@ -352,57 +521,80 @@ function updateFlippers() {
     else rightFlipperAngle = Math.max(rightFlipperAngle - speed, rightFlipperTarget);
 }
 
-// Drawing
+// ======== DRAWING ========
+
+function drawGrid() {
+    ctx.strokeStyle = 'rgba(0,212,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = TABLE_L; x <= TABLE_R; x += 20) {
+        ctx.beginPath(); ctx.moveTo(x, TABLE_T); ctx.lineTo(x, DRAIN_Y + 30); ctx.stroke();
+    }
+    for (let y = TABLE_T; y <= DRAIN_Y + 30; y += 20) {
+        ctx.beginPath(); ctx.moveTo(TABLE_L, y); ctx.lineTo(TABLE_R, y); ctx.stroke();
+    }
+}
+
+function drawMatrixRain() {
+    ctx.font = '10px JetBrains Mono, monospace';
+    for (const mc of matrixChars) {
+        ctx.fillStyle = 'rgba(0,255,136,' + mc.alpha + ')';
+        ctx.fillText(mc.char, mc.x, mc.y);
+        mc.y += mc.speed;
+        if (mc.y > H) { mc.y = -10; mc.x = Math.random() * W; mc.char = String.fromCharCode(0x30A0 + Math.random() * 96); }
+    }
+}
+
+function drawBacklinkWeb() {
+    for (const [a, b] of backlinkEdges) {
+        const na = backlinkNodes[a], nb = backlinkNodes[b];
+        const lit = na.lit || nb.lit;
+        ctx.strokeStyle = lit ? 'rgba(0,212,255,0.4)' : 'rgba(26,42,74,0.5)';
+        ctx.lineWidth = lit ? 1.5 : 0.5;
+        ctx.beginPath(); ctx.moveTo(na.x, na.y); ctx.lineTo(nb.x, nb.y); ctx.stroke();
+    }
+    for (const node of backlinkNodes) {
+        if (node.timer > 0) node.timer--;
+        if (node.timer <= 0) node.lit = false;
+        ctx.beginPath(); ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+        if (node.lit) { ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 10; }
+        else { ctx.fillStyle = 'rgba(26,42,74,0.6)'; ctx.shadowBlur = 0; }
+        ctx.fill(); ctx.shadowBlur = 0;
+    }
+    ctx.fillStyle = 'rgba(0,212,255,0.15)';
+    ctx.font = '8px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('LINK EQUITY ZONE', W/2, 45);
+}
+
 function drawTable() {
-    // Side walls
-    ctx.strokeStyle = '#3a3a5a';
+    ctx.strokeStyle = '#1a2a4a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(TABLE_L, TABLE_T);
-    ctx.lineTo(TABLE_L, DRAIN_Y);
-    ctx.moveTo(TABLE_R, TABLE_T);
-    ctx.lineTo(TABLE_R, DRAIN_Y);
-    // Top arc
-    ctx.moveTo(TABLE_L, TABLE_T);
-    ctx.lineTo(TABLE_R, TABLE_T);
+    ctx.moveTo(TABLE_L, TABLE_T); ctx.lineTo(TABLE_L, DRAIN_Y);
+    ctx.moveTo(TABLE_R, TABLE_T); ctx.lineTo(TABLE_R, DRAIN_Y);
+    ctx.moveTo(TABLE_L, TABLE_T); ctx.lineTo(TABLE_R, TABLE_T);
     ctx.stroke();
 
-    // Plunger lane
-    ctx.strokeStyle = '#2a2a3a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(PLUNGER_X - PLUNGER_W/2, 200);
-    ctx.lineTo(PLUNGER_X - PLUNGER_W/2, H - 40);
-    ctx.stroke();
+    ctx.strokeStyle = '#1a2a4a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(PLUNGER_X - PLUNGER_W/2, 200); ctx.lineTo(PLUNGER_X - PLUNGER_W/2, H - 40); ctx.stroke();
 
-    // Drain zone
-    ctx.fillStyle = '#1a0a0a';
+    ctx.fillStyle = 'rgba(255,68,68,0.08)';
     ctx.fillRect(FLIPPER_L_X - 30, DRAIN_Y, FLIPPER_R_X - FLIPPER_L_X + 60, 30);
     ctx.fillStyle = '#ff4444';
-    ctx.font = 'bold 10px Inter, sans-serif';
+    ctx.font = 'bold 9px JetBrains Mono, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('DRAIN', W / 2, DRAIN_Y + 18);
+    ctx.fillText('DEINDEX ZONE', W / 2, DRAIN_Y + 18);
 
-    // Gutter walls
-    ctx.strokeStyle = '#3a3a5a';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#1a2a4a'; ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(TABLE_L, FLIPPER_Y + 15);
-    ctx.lineTo(FLIPPER_L_X - 30, DRAIN_Y);
-    ctx.moveTo(TABLE_R, FLIPPER_Y + 15);
-    ctx.lineTo(FLIPPER_R_X + 30, DRAIN_Y);
+    ctx.moveTo(TABLE_L, FLIPPER_Y + 15); ctx.lineTo(FLIPPER_L_X - 30, DRAIN_Y);
+    ctx.moveTo(TABLE_R, FLIPPER_Y + 15); ctx.lineTo(FLIPPER_R_X + 30, DRAIN_Y);
     ctx.stroke();
 
-    // Slingshots
     for (const s of slings) {
-        ctx.strokeStyle = '#6c63ff';
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#6c63ff';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.moveTo(s.x1, s.y1);
-        ctx.lineTo(s.x2, s.y2);
-        ctx.stroke();
+        ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 3;
+        ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
         ctx.shadowBlur = 0;
     }
 }
@@ -411,25 +603,18 @@ function drawBumpers() {
     for (const b of bumpers) {
         const pulse = 1 + Math.sin(Date.now() * 0.003 + b.x) * 0.05;
         const r = b.r * pulse;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-        const grd = ctx.createRadialGradient(b.x - r*0.3, b.y - r*0.3, 2, b.x, b.y, r);
-        grd.addColorStop(0, '#fff');
-        grd.addColorStop(0.3, b.color);
-        grd.addColorStop(1, b.color + '88');
-        ctx.fillStyle = grd;
+        const pillW = r * 2.2, pillH = r * 1.2;
+
+        ctx.beginPath(); ctx.roundRect(b.x - pillW/2, b.y - pillH/2, pillW, pillH, pillH/2);
+        ctx.fillStyle = 'rgba(0,255,136,0.08)';
+        ctx.shadowColor = b.color; ctx.shadowBlur = 8;
         ctx.fill();
-        ctx.strokeStyle = b.color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.shadowColor = b.color;
-        ctx.shadowBlur = 12;
-        ctx.stroke();
+        ctx.strokeStyle = b.color; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold ' + (b.r > 18 ? 10 : 8) + 'px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+
+        ctx.fillStyle = b.color;
+        ctx.font = (b.r > 18 ? '8' : '7') + 'px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(b.label, b.x, b.y);
     }
     ctx.textBaseline = 'alphabetic';
@@ -437,117 +622,111 @@ function drawBumpers() {
 
 function drawTargets() {
     for (const t of targets) {
-        ctx.fillStyle = t.hit ? '#1a1a24' : t.color;
-        ctx.shadowColor = t.hit ? 'transparent' : t.color;
-        ctx.shadowBlur = t.hit ? 0 : 6;
-        ctx.beginPath();
-        ctx.roundRect(t.x, t.y, t.w, t.h, 4);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = t.hit ? '#333' : '#fff';
-        ctx.font = 'bold 8px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(t.label, t.x + t.w/2, t.y + t.h/2 + 3);
+        const cardH = t.h + 6;
+        ctx.fillStyle = t.hit ? 'rgba(26,42,74,0.3)' : 'rgba(13,21,48,0.9)';
+        ctx.strokeStyle = t.hit ? '#1a2a4a' : t.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(t.x - 2, t.y - 3, t.w + 4, cardH, 3); ctx.fill(); ctx.stroke();
+        if (t.hit) {
+            ctx.fillStyle = '#ffaa00'; ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 6;
+            ctx.font = 'bold 8px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+            ctx.fillText('#1', t.x + t.w/2, t.y + t.h/2 + 3); ctx.shadowBlur = 0;
+        } else {
+            ctx.fillStyle = '#4a9eff';
+            ctx.font = 'bold 7px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+            ctx.fillText(t.label, t.x + t.w/2, t.y + t.h/2 + 3);
+        }
     }
 }
 
 function drawRollovers() {
     for (const r of rollovers) {
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
-        ctx.fillStyle = r.lit ? r.color + '44' : r.color;
-        ctx.fill();
-        if (!r.lit) {
-            ctx.shadowColor = r.color;
-            ctx.shadowBlur = 10;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-        }
-        ctx.fillStyle = r.lit ? '#444' : '#fff';
-        ctx.font = 'bold 9px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+        if (r.lit) { ctx.fillStyle = 'rgba(0,255,136,0.15)'; }
+        else { ctx.fillStyle = r.color; ctx.shadowColor = r.color; ctx.shadowBlur = 10; }
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = r.lit ? '#1a2a4a' : '#fff';
+        ctx.font = 'bold 9px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(r.label, r.x, r.y);
     }
     ctx.textBaseline = 'alphabetic';
 }
 
 function drawFlippers() {
-    function drawFlipper(baseX, angle, color) {
+    function drawFlipper(baseX, angle, label) {
         const end = getFlipperEnd(baseX, FLIPPER_Y, angle, FLIPPER_LEN);
         ctx.lineCap = 'round';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = FLIPPER_W * 2;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.moveTo(baseX, FLIPPER_Y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
+        ctx.strokeStyle = '#00ff88'; ctx.lineWidth = FLIPPER_W * 2;
+        ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.moveTo(baseX, FLIPPER_Y); ctx.lineTo(end.x, end.y); ctx.stroke();
         ctx.shadowBlur = 0;
-        // Taper
-        ctx.lineWidth = FLIPPER_W * 1.2;
-        ctx.strokeStyle = '#fff3';
-        ctx.beginPath();
-        ctx.moveTo(baseX, FLIPPER_Y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
+        ctx.lineWidth = FLIPPER_W * 1.2; ctx.strokeStyle = 'rgba(0,255,136,0.3)';
+        ctx.beginPath(); ctx.moveTo(baseX, FLIPPER_Y); ctx.lineTo(end.x, end.y); ctx.stroke();
         ctx.lineCap = 'butt';
+        ctx.fillStyle = 'rgba(0,255,136,0.5)';
+        ctx.font = '7px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+        ctx.fillText(label, (baseX + end.x) / 2, FLIPPER_Y + 22);
     }
-    drawFlipper(FLIPPER_L_X, leftFlipperAngle, '#4ade80');
-    drawFlipper(FLIPPER_R_X, rightFlipperAngle, '#4ade80');
+    drawFlipper(FLIPPER_L_X, leftFlipperAngle, 'On-Page');
+    drawFlipper(FLIPPER_R_X, rightFlipperAngle, 'Off-Page');
 }
 
 function drawBall() {
     if (!ball) return;
-    const grd = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_R);
-    grd.addColorStop(0, '#fff');
-    grd.addColorStop(0.5, '#c0c0c0');
-    grd.addColorStop(1, '#888');
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
-    ctx.fillStyle = grd;
-    ctx.fill();
-    ctx.shadowColor = '#fff';
-    ctx.shadowBlur = 8;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    for (let i = 0; i < ballTrail.length; i++) {
+        const t = ballTrail[i];
+        const alpha = (i / ballTrail.length) * 0.4;
+        const r = BALL_R * (i / ballTrail.length) * 0.7;
+        ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,255,136,' + alpha + ')'; ctx.fill();
+    }
+    const pulse = 1 + Math.sin(Date.now() * 0.008) * 0.15;
+    const br = BALL_R * pulse;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, br + 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,255,136,0.1)'; ctx.fill();
+    const grd = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, br);
+    grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.4, '#00ff88'); grd.addColorStop(1, '#00aa55');
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, br, 0, Math.PI * 2);
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 15; ctx.fill(); ctx.shadowBlur = 0;
 }
 
 function drawPlunger() {
     if (!ball || ball.active) return;
-    const pw = PLUNGER_W - 4;
-    const ph = 40;
+    const pw = PLUNGER_W - 4, ph = 40;
     const py = ball.y + BALL_R + 5 + launchPower * 30;
-    ctx.fillStyle = '#6c63ff';
-    ctx.shadowColor = '#6c63ff';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.roundRect(PLUNGER_X - pw/2, py, pw, ph, 4);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    // Spring lines
-    ctx.strokeStyle = '#4a42cc';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
-        const sy = py + 8 + i * 6;
-        ctx.beginPath();
-        ctx.moveTo(PLUNGER_X - pw/3, sy);
-        ctx.lineTo(PLUNGER_X + pw/3, sy);
-        ctx.stroke();
-    }
-    // Power indicator
-    if (launching) {
-        ctx.fillStyle = `hsl(${120 - launchPower * 120}, 80%, 50%)`;
-        ctx.fillRect(PLUNGER_X - pw/2 - 8, py, 4, -launchPower * 60);
+    ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.roundRect(PLUNGER_X - pw/2, py, pw, ph, 4); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#0088aa'; ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) { const sy = py + 8 + i * 6; ctx.beginPath(); ctx.moveTo(PLUNGER_X - pw/3, sy); ctx.lineTo(PLUNGER_X + pw/3, sy); ctx.stroke(); }
+    if (launching) { ctx.fillStyle = 'hsl(' + (120 + launchPower * 30) + ', 90%, 55%)'; ctx.fillRect(PLUNGER_X - pw/2 - 8, py, 4, -launchPower * 60); }
+}
+
+function drawBossTargets() {
+    for (const boss of bossTargets) {
+        ctx.fillStyle = boss.defeated ? 'rgba(26,42,74,0.2)' : 'rgba(13,21,48,0.85)';
+        ctx.strokeStyle = boss.defeated ? '#1a2a4a' : boss.color; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(boss.x, boss.y, boss.w, boss.h, 4); ctx.fill(); ctx.stroke();
+        if (!boss.defeated) {
+            ctx.fillStyle = boss.color;
+            ctx.font = 'bold 8px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+            ctx.fillText(boss.label, boss.x + boss.w/2, boss.y + 10);
+            const hpW = boss.w - 10, hpH = 4, hpX = boss.x + 5, hpY = boss.y + boss.h - 8;
+            ctx.fillStyle = '#1a2a4a'; ctx.fillRect(hpX, hpY, hpW, hpH);
+            ctx.fillStyle = boss.color; ctx.fillRect(hpX, hpY, hpW * (boss.hp / boss.maxHp), hpH);
+        } else {
+            ctx.fillStyle = '#1a2a4a';
+            ctx.font = '7px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+            ctx.fillText('DEFEATED', boss.x + boss.w/2, boss.y + boss.h/2 + 3);
+        }
     }
 }
 
 function drawParticles() {
     for (const p of particles) {
         const alpha = p.life / 25;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fillStyle = p.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
         ctx.fill();
     }
@@ -558,34 +737,42 @@ function drawFlashTexts() {
         const alpha = Math.min(1, f.life / 20);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = f.color;
-        ctx.font = 'bold 12px Inter, sans-serif';
-        ctx.textAlign = 'center';
+        ctx.font = 'bold 11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
         ctx.fillText(f.text, f.x, f.y - (50 - f.life) * 0.5);
         ctx.globalAlpha = 1;
     }
 }
 
+function drawCoreUpdateFlash() {
+    if (coreUpdateFlash > 0) {
+        const alpha = coreUpdateFlash / 40 * 0.3;
+        ctx.fillStyle = 'rgba(255,107,107,' + alpha + ')'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(255,255,255,' + (alpha * 2) + ')';
+        ctx.font = 'bold 24px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+        ctx.fillText('CORE UPDATE', W/2, H/2);
+        coreUpdateFlash--;
+    }
+}
+
 function drawScoreBoard() {
-    // Score multiplier targets on sides
-    ctx.fillStyle = '#ffffff11';
-    ctx.font = '9px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('DOMAIN AUTHORITY', W/2, 170);
+    ctx.fillStyle = 'rgba(0,255,136,0.08)';
+    ctx.font = '8px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('KEYWORD TARGETS', W/2, 170);
     ctx.fillText('PAGE METRICS', W/2, 300);
 }
 
 function loop() {
-    // Shake effect
     ctx.save();
-    if (shakeTimer > 0) {
-        ctx.translate((Math.random()-.5)*4, (Math.random()-.5)*4);
-        shakeTimer--;
-    }
+    if (shakeTimer > 0) { ctx.translate((Math.random()-.5)*4, (Math.random()-.5)*4); shakeTimer--; }
 
     ctx.clearRect(-5, -5, W+10, H+10);
 
+    drawMatrixRain();
+    drawGrid();
+    drawBacklinkWeb();
     drawTable();
     drawScoreBoard();
+    drawBossTargets();
     drawTargets();
     drawRollovers();
     drawBumpers();
@@ -595,27 +782,23 @@ function loop() {
     if (gameState === 'playing') {
         updateFlippers();
         updateBall();
-        if (launching && ball && !ball.active) {
-            launchPower = Math.min(1, launchPower + 0.02);
-        }
+        if (launching && ball && !ball.active) { launchPower = Math.min(1, launchPower + 0.02); }
     }
 
     drawBall();
 
-    // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--;
+        const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--;
         if (p.life <= 0) particles.splice(i, 1);
     }
     drawParticles();
 
-    // Update flash texts
     for (let i = flashTexts.length - 1; i >= 0; i--) {
         flashTexts[i].life--;
         if (flashTexts[i].life <= 0) flashTexts.splice(i, 1);
     }
     drawFlashTexts();
+    drawCoreUpdateFlash();
 
     ctx.restore();
     requestAnimationFrame(loop);
@@ -645,18 +828,14 @@ canvas.addEventListener('touchstart', e => {
         const x = (touch.clientX - rect.left) / rect.width * W;
         const y = (touch.clientY - rect.top) / rect.height * H;
         if (y > H - 150 && x > W * 0.6) {
-            // Right side bottom = right flipper
             rightFlipperTarget = Math.PI + 0.5;
         } else if (y > H - 150 && x < W * 0.4) {
-            // Left side bottom = left flipper
             leftFlipperTarget = -0.5;
         } else if (x > W * 0.7) {
-            // Right plunger area
             if (ball && !ball.active) launching = true;
         } else if (x < W * 0.3) {
             leftFlipperTarget = -0.5;
         } else {
-            // Middle = both flippers
             leftFlipperTarget = -0.5;
             rightFlipperTarget = Math.PI + 0.5;
         }
@@ -677,12 +856,20 @@ function startGame() {
     multProgress = 0;
     particles = [];
     flashTexts = [];
+    ballTrail = [];
+    daValue = 0;
+    coreUpdateFlash = 0;
+    sideStats = { bounceRate: 85, pagesCrawled: 0, backlinksEarned: 0, keywordScore: 0 };
     bumpers.forEach(b => b.hits = 0);
     targets.forEach(t => t.hit = false);
     rollovers.forEach(r => r.lit = false);
+    backlinkNodes.forEach(n => { n.lit = false; n.timer = 0; });
+    bossTargets.forEach(b => { b.hp = b.maxHp; b.defeated = false; });
     document.getElementById('scoreDisplay').textContent = '0';
     document.getElementById('ballsDisplay').textContent = '3';
     updateMultBar();
+    updateDAMeter();
+    updateSideStats();
     gameState = 'playing';
     spawnBall();
     document.getElementById('startOverlay').classList.add('hidden');
