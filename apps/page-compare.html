@@ -74,6 +74,18 @@
       .score-section { grid-template-columns: 1fr; }
       .compare-table th:nth-child(3), .compare-table td:nth-child(3) { display: none; }
       .compare-table { font-size: 0.78rem; }
+      #heading-outline > div { grid-template-columns: 1fr !important; }
+    }
+    .heading-list { background: #111; border: 1px solid #222; border-radius: 8px; padding: 0.75rem; max-height: 400px; overflow-y: auto; }
+    .heading-entry { padding: 0.3rem 0; font-size: 0.82rem; line-height: 1.4; border-bottom: 1px solid #1a1a1a; }
+    .heading-entry:last-child { border-bottom: none; }
+    .heading-tag { display: inline-block; width: 28px; font-weight: 700; font-size: 0.72rem; margin-right: 0.4rem; border-radius: 3px; text-align: center; padding: 1px 0; }
+    .ht-1 { color: #f87171; background: #3a1515; }
+    .ht-2 { color: #fb923c; background: #3a2510; }
+    .ht-3 { color: #fbbf24; background: #3a3010; }
+    .ht-4 { color: #4ade80; background: #153a20; }
+    .ht-5 { color: #60a5fa; background: #152a3a; }
+    .ht-6 { color: #c084fc; background: #25153a; }
       .input-row { flex-direction: column; }
       .url-input { min-width: unset; }
       .compare-mobile { display: block !important; }
@@ -135,6 +147,20 @@
       </thead>
       <tbody id="compare-body"></tbody>
     </table>
+
+    <div id="heading-outline" style="margin-top:2rem;">
+      <h2 style="font-size:1.2rem;margin-bottom:1rem;">Heading Structure Outline</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div>
+          <h3 style="font-size:0.9rem;color:#888;margin-bottom:0.75rem;">Your Page</h3>
+          <div id="outline-yours" class="heading-list"></div>
+        </div>
+        <div>
+          <h3 style="font-size:0.9rem;color:#888;margin-bottom:0.75rem;">Competitor Page</h3>
+          <div id="outline-comp" class="heading-list"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -207,8 +233,14 @@
 
       // Heading structure
       const headings = {};
+      const headingList = [];
       for (let i = 1; i <= 6; i++) {
-        headings['h' + i] = doc.querySelectorAll('h' + i).length;
+        const els = [...doc.querySelectorAll('h' + i)];
+        headings['h' + i] = els.length;
+        els.forEach(el => {
+          const txt = el.textContent.trim();
+          if (txt) headingList.push({ level: i, text: txt });
+        });
       }
 
       // Word count (visible text)
@@ -276,7 +308,7 @@
         description, descLen: description.length,
         canonical,
         h1Text, h1Count: h1s.length,
-        headings, wordCount,
+        headings, headingList, wordCount,
         internal, external, nofollow,
         totalImages, missingAlt,
         schemaTypes, hasMicrodata,
@@ -537,6 +569,20 @@
 
       document.getElementById('results').style.display = 'block';
       document.getElementById('csv-btn').style.display = 'inline-block';
+
+      // Render heading outlines
+      function renderOutline(list, elId) {
+        const el = document.getElementById(elId);
+        if (!list || list.length === 0) {
+          el.innerHTML = '<div style="color:#555;font-size:0.82rem;">No headings found</div>';
+          return;
+        }
+        el.innerHTML = list.map(h =>
+          `<div class="heading-entry" style="padding-left:${(h.level - 1) * 12}px;"><span class="heading-tag ht-${h.level}">H${h.level}</span>${h.text}</div>`
+        ).join('');
+      }
+      renderOutline(result.a.headingList, 'outline-yours');
+      renderOutline(result.b.headingList, 'outline-comp');
     }
 
     async function runComparison() {
