@@ -64,7 +64,7 @@
         el.innerHTML = items.map(item => {
           const title = item.querySelector('title')?.textContent || '';
           const link = item.querySelector('link')?.textContent || item.querySelector('guid')?.textContent || '#';
-          const date = item.querySelector('pubDate')?.textContent || '';
+          const date = item.querySelector('pubDate')?.textContent || item.getElementsByTagName('dc:date')[0]?.textContent || '';
           const d = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
           return `<div class="feed-item"><a href="${link}" target="_blank" rel="noopener">${title}</a>${d ? `<span class="date">${d}</span>` : ''}</div>`;
         }).join('');
