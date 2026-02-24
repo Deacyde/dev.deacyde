@@ -119,7 +119,7 @@
       status.style.color = '#888';
       status.textContent = '⏳ Fetching page...';
       try {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        const res = await fetch(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`);
         const data = await res.json();
         if (!data.contents) throw new Error('Empty response');
         document.getElementById('html-input').value = data.contents;
