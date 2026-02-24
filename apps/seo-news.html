@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEO News Feed | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .feed-col { background: #111; border: 1px solid #222; border-radius: 10px; overflow: hidden; }
+    .feed-header { background: #428bca; padding: 0.75rem 1rem; font-weight: 700; font-size: 0.95rem; }
+    .feed-header a { color: #fff; text-decoration: none; }
+    .feed-items { padding: 0; }
+    .feed-item { padding: 0.85rem 1rem; border-bottom: 1px solid #1e1e1e; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-item a { color: #ddd; text-decoration: none; font-size: 0.88rem; line-height: 1.45; display: block; margin-bottom: 0.3rem; }
+    .feed-item a:hover { color: #428bca; }
+    .feed-item .date { color: #555; font-size: 0.75rem; }
+    .loading { padding: 1rem; color: #666; font-size: 0.85rem; }
+    .error { padding: 1rem; color: #e55; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <a href="../index.html#apps" class="back">← Back to Deacyde.com</a>
+  <h1>SEO News Feed</h1>
+  <p class="subtitle">Latest articles from top SEO publications</p>
+
+  <div class="grid">
+    <div class="feed-col">
+      <div class="feed-header"><a href="https://www.seroundtable.com" target="_blank">SE Roundtable</a></div>
+      <div class="feed-items" id="feed-sert"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="feed-col">
+      <div class="feed-header"><a href="https://searchengineland.com" target="_blank">Search Engine Land</a></div>
+      <div class="feed-items" id="feed-sel"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="feed-col">
+      <div class="feed-header"><a href="https://www.searchenginejournal.com" target="_blank">Search Engine Journal</a></div>
+      <div class="feed-items" id="feed-sej"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <script>
+    const sources = [
+      { id: 'feed-sert', url: 'https://www.seroundtable.com/feed' },
+      { id: 'feed-sel',  url: 'https://searchengineland.com/feed' },
+      { id: 'feed-sej',  url: 'https://www.searchenginejournal.com/feed' },
+    ];
+
+    async function loadFeed({ id, url }) {
+      const el = document.getElementById(id);
+      try {
+        const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const res = await fetch(proxy);
+        const text = await res.text();
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const items = [...xml.querySelectorAll('item')].slice(0, 10);
+        if (!items.length) throw new Error('No items');
+        el.innerHTML = items.map(item => {
+          const title = item.querySelector('title')?.textContent || '';
+          const link  = item.querySelector('link')?.textContent || '#';
+          const date  = item.querySelector('pubDate')?.textContent || '';
+          const d = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          return `<div class="feed-item"><a href="${link}" target="_blank" rel="noopener">${title}</a>${d ? `<span class="date">${d}</span>` : ''}</div>`;
+        }).join('');
+      } catch(e) {
+        el.innerHTML = `<div class="error">Failed to load feed.</div>`;
+      }
+    }
+
+    sources.forEach(loadFeed);
+  </script>
+</body>
+</html>
