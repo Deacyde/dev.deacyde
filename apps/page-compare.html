@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page Comparison | Deacyde</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 2rem 1rem; max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+    .back { color: #888; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back:hover { color: #fff; }
+    .input-section { margin-bottom: 1.5rem; }
+    .input-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .input-label { font-size: 0.82rem; color: #888; margin-bottom: 0.3rem; }
+    .url-input { flex: 1; min-width: 200px; padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none; }
+    .url-input:focus { border-color: #4285f4; }
+    .url-input::placeholder { color: #555; }
+    .btn { padding: 0.65rem 1.5rem; background: #4285f4; border: none; border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #3367d6; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { padding: 0.65rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.9rem; cursor: pointer; font-weight: 600; }
+    .btn-secondary:hover { color: #fff; border-color: #666; }
+    .btn-swap { padding: 0.5rem 0.8rem; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.85rem; cursor: pointer; }
+    .btn-swap:hover { color: #fff; border-color: #666; }
+    .status-msg { font-size: 0.82rem; color: #888; margin-bottom: 0.75rem; min-height: 1.2rem; }
+
+    /* Score cards */
+    .score-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+    .score-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 1.2rem; text-align: center; }
+    .score-card-label { font-size: 0.82rem; color: #888; margin-bottom: 0.3rem; }
+    .score-card-value { font-size: 2.5rem; font-weight: 700; }
+    .score-card-url { font-size: 0.75rem; color: #555; margin-top: 0.3rem; word-break: break-all; }
+    .score-yours .score-card-value { color: #4285f4; }
+    .score-competitor .score-card-value { color: #f87171; }
+
+    /* Comparison table */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 2rem; }
+    .compare-table th { text-align: left; padding: 0.65rem 0.75rem; font-size: 0.78rem; color: #666; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 0.05em; background: #0d0d0d; position: sticky; top: 0; z-index: 1; }
+    .compare-table td { padding: 0.75rem; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
+    .compare-table tr:hover td { background: #111; }
+    .compare-table .metric-name { color: #ccc; font-weight: 600; white-space: nowrap; min-width: 140px; }
+    .compare-table .cell-yours, .compare-table .cell-comp { max-width: 320px; word-break: break-word; }
+    .compare-table .cell-winner { text-align: center; min-width: 60px; }
+
+    .winner-icon { font-size: 1.1rem; font-weight: 700; }
+    .win-yours { color: #4ade80; }
+    .win-comp { color: #f87171; }
+    .win-tie { color: #fbbf24; }
+
+    .text-value { color: #ddd; font-size: 0.83rem; line-height: 1.4; }
+    .text-meta { color: #666; font-size: 0.75rem; margin-top: 0.15rem; }
+    .warn { color: #fbbf24; font-size: 0.75rem; }
+    .error { color: #f87171; font-size: 0.75rem; }
+    .ok { color: #4ade80; font-size: 0.75rem; }
+
+    .bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .bar { height: 6px; border-radius: 3px; background: #4285f4; min-width: 2px; }
+    .bar-num { font-size: 0.85rem; color: #ddd; font-weight: 600; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .tag { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; background: #1e3a5f; color: #60a5fa; }
+    .tag-present { background: #14532d; color: #4ade80; }
+    .tag-missing { background: #3a1a1a; color: #f87171; }
+    .tag-warn { background: #3a2a00; color: #fbbf24; }
+
+    .empty { text-align: center; color: #555; padding: 3rem; }
+
+    .progress-bar { width: 100%; height: 4px; background: #222; border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
+    .progress-fill { height: 100%; background: #4285f4; border-radius: 2px; transition: width 0.3s; }
+
+    @media (max-width: 700px) {
+      .score-section { grid-template-columns: 1fr; }
+      .compare-table th:nth-child(3), .compare-table td:nth-child(3) { display: none; }
+      .compare-table { font-size: 0.78rem; }
+      .input-row { flex-direction: column; }
+      .url-input { min-width: unset; }
+      .compare-mobile { display: block !important; }
+    }
+    @media (max-width: 500px) {
+      .compare-table th, .compare-table td { padding: 0.5rem 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <a href="../" class="back">← Back to Home</a>
+  <h1>⚖️ Page Comparison</h1>
+  <p class="subtitle">Compare SEO elements of two pages side-by-side</p>
+
+  <div class="input-section">
+    <div class="input-label">Your Page</div>
+    <div class="input-row">
+      <input class="url-input" id="url1" type="url" placeholder="https://yoursite.com/page" />
+    </div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+      <button class="btn-swap" onclick="swapUrls()" title="Swap URLs">⇅ Swap</button>
+    </div>
+    <div class="input-label">Competitor Page</div>
+    <div class="input-row">
+      <input class="url-input" id="url2" type="url" placeholder="https://competitor.com/page" />
+    </div>
+    <div class="input-row">
+      <button class="btn" id="compare-btn" onclick="runComparison()">Compare Pages</button>
+      <button class="btn-secondary" onclick="clearAll()">Clear</button>
+      <button class="btn-secondary" id="csv-btn" onclick="exportCSV()" style="display:none;">Export CSV</button>
+    </div>
+  </div>
+
+  <div id="status" class="status-msg"></div>
+  <div id="progress" class="progress-bar" style="display:none;"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+  <div id="results" style="display:none;">
+    <div class="score-section">
+      <div class="score-card score-yours">
+        <div class="score-card-label">Your Page</div>
+        <div class="score-card-value" id="score-yours">0/17</div>
+        <div class="score-card-url" id="score-url1"></div>
+      </div>
+      <div class="score-card score-competitor">
+        <div class="score-card-label">Competitor Page</div>
+        <div class="score-card-value" id="score-comp">0/17</div>
+        <div class="score-card-url" id="score-url2"></div>
+      </div>
+    </div>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Your Page</th>
+          <th>Competitor</th>
+          <th>Winner</th>
+        </tr>
+      </thead>
+      <tbody id="compare-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let comparisonData = [];
+
+    function setStatus(msg, color) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.style.color = color || '#888';
+    }
+
+    function setProgress(pct) {
+      const bar = document.getElementById('progress');
+      const fill = document.getElementById('progress-fill');
+      if (pct <= 0) { bar.style.display = 'none'; return; }
+      bar.style.display = 'block';
+      fill.style.width = pct + '%';
+    }
+
+    function swapUrls() {
+      const u1 = document.getElementById('url1');
+      const u2 = document.getElementById('url2');
+      const tmp = u1.value;
+      u1.value = u2.value;
+      u2.value = tmp;
+    }
+
+    function clearAll() {
+      document.getElementById('url1').value = '';
+      document.getElementById('url2').value = '';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('csv-btn').style.display = 'none';
+      setStatus('');
+      setProgress(0);
+      comparisonData = [];
+    }
+
+    function isValidUrl(s) {
+      try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; }
+    }
+
+    async function fetchPage(url) {
+      const res = await fetch(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.contents) throw new Error('Empty response from proxy');
+      return data.contents;
+    }
+
+    function parsePage(html, url) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const baseHost = new URL(url).hostname;
+
+      // Title
+      const titleEl = doc.querySelector('title');
+      const title = titleEl ? titleEl.textContent.trim() : '';
+
+      // Meta description
+      const metaDesc = doc.querySelector('meta[name="description"]');
+      const description = metaDesc ? (metaDesc.getAttribute('content') || '').trim() : '';
+
+      // Canonical
+      const canonEl = doc.querySelector('link[rel="canonical"]');
+      const canonical = canonEl ? (canonEl.getAttribute('href') || '').trim() : '';
+
+      // H1
+      const h1s = [...doc.querySelectorAll('h1')];
+      const h1Text = h1s.map(h => h.textContent.trim()).filter(Boolean);
+
+      // Heading structure
+      const headings = {};
+      for (let i = 1; i <= 6; i++) {
+        headings['h' + i] = doc.querySelectorAll('h' + i).length;
+      }
+
+      // Word count (visible text)
+      const bodyText = (doc.body ? doc.body.textContent : '').replace(/\s+/g, ' ').trim();
+      const wordCount = bodyText ? bodyText.split(/\s+/).length : 0;
+
+      // Links
+      const anchors = [...doc.querySelectorAll('a[href]')];
+      let internal = 0, external = 0, nofollow = 0;
+      anchors.forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const rel = (a.getAttribute('rel') || '').toLowerCase();
+        if (rel.includes('nofollow')) nofollow++;
+        if (href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+        try {
+          const linkHost = href.startsWith('http') ? new URL(href).hostname : baseHost;
+          if (linkHost === baseHost || linkHost.endsWith('.' + baseHost) || baseHost.endsWith('.' + linkHost)) {
+            internal++;
+          } else {
+            external++;
+          }
+        } catch {
+          internal++;
+        }
+      });
+
+      // Images
+      const images = [...doc.querySelectorAll('img')];
+      const totalImages = images.length;
+      const missingAlt = images.filter(img => !img.getAttribute('alt') || !img.getAttribute('alt').trim()).length;
+
+      // Schema / Structured Data
+      const jsonLdScripts = [...doc.querySelectorAll('script[type="application/ld+json"]')];
+      const schemaTypes = [];
+      jsonLdScripts.forEach(s => {
+        try {
+          const d = JSON.parse(s.textContent);
+          if (Array.isArray(d)) { d.forEach(item => { if (item['@type']) schemaTypes.push(item['@type']); }); }
+          else if (d['@graph']) { d['@graph'].forEach(item => { if (item['@type']) schemaTypes.push(item['@type']); }); }
+          else if (d['@type']) { schemaTypes.push(d['@type']); }
+        } catch {}
+      });
+      const hasMicrodata = doc.querySelectorAll('[itemscope]').length > 0;
+
+      // Open Graph
+      const ogTitle = doc.querySelector('meta[property="og:title"]');
+      const ogDesc = doc.querySelector('meta[property="og:description"]');
+      const ogImage = doc.querySelector('meta[property="og:image"]');
+
+      // Twitter Card
+      const twCard = doc.querySelector('meta[name="twitter:card"]');
+      const twTitle = doc.querySelector('meta[name="twitter:title"]');
+
+      // Viewport
+      const viewport = doc.querySelector('meta[name="viewport"]');
+
+      // Language
+      const lang = doc.documentElement.getAttribute('lang') || '';
+
+      // Response size
+      const sizeKB = (new Blob([html]).size / 1024).toFixed(1);
+
+      return {
+        title, titleLen: title.length,
+        description, descLen: description.length,
+        canonical,
+        h1Text, h1Count: h1s.length,
+        headings, wordCount,
+        internal, external, nofollow,
+        totalImages, missingAlt,
+        schemaTypes, hasMicrodata,
+        ogTitle: !!ogTitle, ogDesc: !!ogDesc, ogImage: !!ogImage,
+        twCard: !!twCard, twTitle: !!twTitle,
+        viewport: !!viewport,
+        lang: lang || '',
+        sizeKB: parseFloat(sizeKB)
+      };
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+    function barHtml(val, max) {
+      const pct = max > 0 ? Math.min((val / max) * 100, 100) : 0;
+      return `<div class="bar-wrap"><span class="bar-num">${val}</span><div class="bar" style="width:${Math.max(pct, 2)}px"></div></div>`;
+    }
+
+    function buildComparison(a, b) {
+      const rows = [];
+      let scoreA = 0, scoreB = 0;
+
+      function addRow(name, cellA, cellB, winner) {
+        if (winner === 'a') scoreA++;
+        else if (winner === 'b') scoreB++;
+        rows.push({ name, cellA, cellB, winner });
+      }
+
+      // 1. Title Tag
+      {
+        const warnA = !a.title ? '<div class="error">⚠ Missing</div>' : a.titleLen > 60 ? '<div class="warn">⚠ Too long (>60)</div>' : a.titleLen < 30 ? '<div class="warn">⚠ Too short (<30)</div>' : '<div class="ok">✓ Good length</div>';
+        const warnB = !b.title ? '<div class="error">⚠ Missing</div>' : b.titleLen > 60 ? '<div class="warn">⚠ Too long (>60)</div>' : b.titleLen < 30 ? '<div class="warn">⚠ Too short (<30)</div>' : '<div class="ok">✓ Good length</div>';
+        const cA = `<div class="text-value">${esc(truncate(a.title, 80)) || '<em style="color:#555">—</em>'}</div><div class="text-meta">${a.titleLen} chars</div>${warnA}`;
+        const cB = `<div class="text-value">${esc(truncate(b.title, 80)) || '<em style="color:#555">—</em>'}</div><div class="text-meta">${b.titleLen} chars</div>${warnB}`;
+        const goodA = a.title && a.titleLen >= 30 && a.titleLen <= 60;
+        const goodB = b.title && b.titleLen >= 30 && b.titleLen <= 60;
+        const w = goodA && !goodB ? 'a' : !goodA && goodB ? 'b' : goodA === goodB ? 'tie' : 'tie';
+        addRow('Title Tag', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 2. Meta Description
+      {
+        const warnA = !a.description ? '<div class="error">⚠ Missing</div>' : a.descLen > 160 ? '<div class="warn">⚠ Too long (>160)</div>' : '<div class="ok">✓ Good</div>';
+        const warnB = !b.description ? '<div class="error">⚠ Missing</div>' : b.descLen > 160 ? '<div class="warn">⚠ Too long (>160)</div>' : '<div class="ok">✓ Good</div>';
+        const cA = `<div class="text-value">${esc(truncate(a.description, 100)) || '<em style="color:#555">—</em>'}</div><div class="text-meta">${a.descLen} chars</div>${warnA}`;
+        const cB = `<div class="text-value">${esc(truncate(b.description, 100)) || '<em style="color:#555">—</em>'}</div><div class="text-meta">${b.descLen} chars</div>${warnB}`;
+        const goodA = a.description && a.descLen <= 160;
+        const goodB = b.description && b.descLen <= 160;
+        const w = goodA && !goodB ? 'a' : !goodA && goodB ? 'b' : 'tie';
+        addRow('Meta Description', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 3. Canonical URL
+      {
+        const cA = a.canonical ? `<div class="text-value">${esc(truncate(a.canonical, 60))}</div><div class="ok">✓ Present</div>` : '<div class="error">⚠ Missing</div>';
+        const cB = b.canonical ? `<div class="text-value">${esc(truncate(b.canonical, 60))}</div><div class="ok">✓ Present</div>` : '<div class="error">⚠ Missing</div>';
+        const w = a.canonical && !b.canonical ? 'a' : !a.canonical && b.canonical ? 'b' : 'tie';
+        addRow('Canonical URL', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 4. H1 Tag
+      {
+        const warnA = a.h1Count === 0 ? '<div class="error">⚠ Missing</div>' : a.h1Count > 1 ? '<div class="warn">⚠ Multiple H1s (' + a.h1Count + ')</div>' : '<div class="ok">✓ Single H1</div>';
+        const warnB = b.h1Count === 0 ? '<div class="error">⚠ Missing</div>' : b.h1Count > 1 ? '<div class="warn">⚠ Multiple H1s (' + b.h1Count + ')</div>' : '<div class="ok">✓ Single H1</div>';
+        const textA = a.h1Text.length ? `<div class="text-value">${esc(truncate(a.h1Text[0], 80))}</div>` : '';
+        const textB = b.h1Text.length ? `<div class="text-value">${esc(truncate(b.h1Text[0], 80))}</div>` : '';
+        const goodA = a.h1Count === 1;
+        const goodB = b.h1Count === 1;
+        const w = goodA && !goodB ? 'a' : !goodA && goodB ? 'b' : 'tie';
+        addRow('H1 Tag', textA + warnA, textB + warnB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 5. Heading Structure
+      {
+        const fmt = h => Object.entries(h).map(([k, v]) => `<span style="color:#888">${k.toUpperCase()}:</span> ${v}`).join('&nbsp;&nbsp;');
+        const totalA = Object.values(a.headings).reduce((s, v) => s + v, 0);
+        const totalB = Object.values(b.headings).reduce((s, v) => s + v, 0);
+        const cA = `<div class="text-value">${fmt(a.headings)}</div><div class="text-meta">${totalA} total</div>`;
+        const cB = `<div class="text-value">${fmt(b.headings)}</div><div class="text-meta">${totalB} total</div>`;
+        const w = totalA > totalB ? 'a' : totalB > totalA ? 'b' : 'tie';
+        addRow('Heading Structure', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 6. Word Count
+      {
+        const maxW = Math.max(a.wordCount, b.wordCount, 1);
+        const cA = barHtml(a.wordCount, maxW);
+        const cB = barHtml(b.wordCount, maxW);
+        const w = a.wordCount > b.wordCount ? 'a' : b.wordCount > a.wordCount ? 'b' : 'tie';
+        addRow('Word Count', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 7. Internal Links
+      {
+        const maxL = Math.max(a.internal, b.internal, 1);
+        const cA = barHtml(a.internal, maxL);
+        const cB = barHtml(b.internal, maxL);
+        const w = a.internal > b.internal ? 'a' : b.internal > a.internal ? 'b' : 'tie';
+        addRow('Internal Links', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 8. External Links
+      {
+        const maxL = Math.max(a.external, b.external, 1);
+        const cA = barHtml(a.external, maxL);
+        const cB = barHtml(b.external, maxL);
+        const w = a.external > b.external ? 'a' : b.external > a.external ? 'b' : 'tie';
+        addRow('External Links', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 9. Nofollow Links
+      {
+        const cA = barHtml(a.nofollow, Math.max(a.nofollow, b.nofollow, 1));
+        const cB = barHtml(b.nofollow, Math.max(a.nofollow, b.nofollow, 1));
+        // Fewer nofollow is better
+        const w = a.nofollow < b.nofollow ? 'a' : b.nofollow < a.nofollow ? 'b' : 'tie';
+        addRow('Nofollow Links', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 10. Images
+      {
+        const cA = barHtml(a.totalImages, Math.max(a.totalImages, b.totalImages, 1));
+        const cB = barHtml(b.totalImages, Math.max(a.totalImages, b.totalImages, 1));
+        const w = a.totalImages > b.totalImages ? 'a' : b.totalImages > a.totalImages ? 'b' : 'tie';
+        addRow('Images', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 11. Images Missing Alt
+      {
+        const pctA = a.totalImages > 0 ? ((a.missingAlt / a.totalImages) * 100).toFixed(0) : 0;
+        const pctB = b.totalImages > 0 ? ((b.missingAlt / b.totalImages) * 100).toFixed(0) : 0;
+        const cA = `<span class="bar-num">${a.missingAlt}</span> <span class="text-meta">/ ${a.totalImages} (${pctA}%)</span>` + (a.missingAlt > 0 ? ' <span class="warn">⚠</span>' : ' <span class="ok">✓</span>');
+        const cB = `<span class="bar-num">${b.missingAlt}</span> <span class="text-meta">/ ${b.totalImages} (${pctB}%)</span>` + (b.missingAlt > 0 ? ' <span class="warn">⚠</span>' : ' <span class="ok">✓</span>');
+        // Fewer missing alt is better
+        const w = a.missingAlt < b.missingAlt ? 'a' : b.missingAlt < a.missingAlt ? 'b' : 'tie';
+        addRow('Images Missing Alt', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 12. Schema/Structured Data
+      {
+        const fmtSchema = (types, micro) => {
+          if (!types.length && !micro) return '<span class="tag tag-missing">None detected</span>';
+          let h = '';
+          if (types.length) h += '<div class="tag-list">' + types.map(t => `<span class="tag tag-present">${esc(t)}</span>`).join('') + '</div>';
+          if (micro) h += '<div style="margin-top:0.2rem"><span class="tag">Microdata</span></div>';
+          return h;
+        };
+        const cA = fmtSchema(a.schemaTypes, a.hasMicrodata);
+        const cB = fmtSchema(b.schemaTypes, b.hasMicrodata);
+        const countA = a.schemaTypes.length + (a.hasMicrodata ? 1 : 0);
+        const countB = b.schemaTypes.length + (b.hasMicrodata ? 1 : 0);
+        const w = countA > countB ? 'a' : countB > countA ? 'b' : 'tie';
+        addRow('Schema/Structured Data', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 13. Open Graph Tags
+      {
+        const fmtOg = (d) => {
+          return ['og:title', 'og:description', 'og:image'].map(tag => {
+            const key = tag === 'og:title' ? 'ogTitle' : tag === 'og:description' ? 'ogDesc' : 'ogImage';
+            return d[key] ? `<span class="tag tag-present">${tag} ✓</span>` : `<span class="tag tag-missing">${tag} ✗</span>`;
+          }).join(' ');
+        };
+        const cA = `<div class="tag-list">${fmtOg(a)}</div>`;
+        const cB = `<div class="tag-list">${fmtOg(b)}</div>`;
+        const countA = (a.ogTitle ? 1 : 0) + (a.ogDesc ? 1 : 0) + (a.ogImage ? 1 : 0);
+        const countB = (b.ogTitle ? 1 : 0) + (b.ogDesc ? 1 : 0) + (b.ogImage ? 1 : 0);
+        const w = countA > countB ? 'a' : countB > countA ? 'b' : 'tie';
+        addRow('Open Graph Tags', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 14. Twitter Card Tags
+      {
+        const fmtTw = (d) => {
+          return ['twitter:card', 'twitter:title'].map(tag => {
+            const key = tag === 'twitter:card' ? 'twCard' : 'twTitle';
+            return d[key] ? `<span class="tag tag-present">${tag} ✓</span>` : `<span class="tag tag-missing">${tag} ✗</span>`;
+          }).join(' ');
+        };
+        const cA = `<div class="tag-list">${fmtTw(a)}</div>`;
+        const cB = `<div class="tag-list">${fmtTw(b)}</div>`;
+        const countA = (a.twCard ? 1 : 0) + (a.twTitle ? 1 : 0);
+        const countB = (b.twCard ? 1 : 0) + (b.twTitle ? 1 : 0);
+        const w = countA > countB ? 'a' : countB > countA ? 'b' : 'tie';
+        addRow('Twitter Card Tags', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 15. Viewport Meta
+      {
+        const cA = a.viewport ? '<span class="tag tag-present">Present ✓</span>' : '<span class="tag tag-missing">Missing ✗</span>';
+        const cB = b.viewport ? '<span class="tag tag-present">Present ✓</span>' : '<span class="tag tag-missing">Missing ✗</span>';
+        const w = a.viewport && !b.viewport ? 'a' : !a.viewport && b.viewport ? 'b' : 'tie';
+        addRow('Viewport Meta', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 16. Language
+      {
+        const cA = a.lang ? `<span class="tag tag-present">${esc(a.lang)}</span>` : '<span class="tag tag-missing">Not set</span>';
+        const cB = b.lang ? `<span class="tag tag-present">${esc(b.lang)}</span>` : '<span class="tag tag-missing">Not set</span>';
+        const w = a.lang && !b.lang ? 'a' : !a.lang && b.lang ? 'b' : 'tie';
+        addRow('Language', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      // 17. Response Size
+      {
+        const cA = `<span class="bar-num">${a.sizeKB} KB</span>`;
+        const cB = `<span class="bar-num">${b.sizeKB} KB</span>`;
+        // Smaller is better for page speed
+        const w = a.sizeKB < b.sizeKB ? 'a' : b.sizeKB < a.sizeKB ? 'b' : 'tie';
+        addRow('Response Size', cA, cB, w === 'a' ? 'a' : w === 'b' ? 'b' : 'tie');
+      }
+
+      return { rows, scoreA, scoreB };
+    }
+
+    function renderResults(result, url1, url2) {
+      const { rows, scoreA, scoreB } = result;
+      comparisonData = rows;
+
+      document.getElementById('score-yours').textContent = scoreA + '/17';
+      document.getElementById('score-comp').textContent = scoreB + '/17';
+      document.getElementById('score-url1').textContent = url1;
+      document.getElementById('score-url2').textContent = url2;
+
+      // Color scores based on who wins
+      const scoreYoursEl = document.getElementById('score-yours');
+      const scoreCompEl = document.getElementById('score-comp');
+      if (scoreA > scoreB) {
+        scoreYoursEl.style.color = '#4ade80';
+        scoreCompEl.style.color = '#f87171';
+      } else if (scoreB > scoreA) {
+        scoreYoursEl.style.color = '#f87171';
+        scoreCompEl.style.color = '#4ade80';
+      } else {
+        scoreYoursEl.style.color = '#fbbf24';
+        scoreCompEl.style.color = '#fbbf24';
+      }
+
+      const tbody = document.getElementById('compare-body');
+      tbody.innerHTML = rows.map(r => {
+        let winIcon;
+        if (r.winner === 'a') winIcon = '<span class="winner-icon win-yours">✓</span>';
+        else if (r.winner === 'b') winIcon = '<span class="winner-icon win-comp">✗</span>';
+        else winIcon = '<span class="winner-icon win-tie">—</span>';
+        return `<tr>
+          <td class="metric-name">${esc(r.name)}</td>
+          <td class="cell-yours">${r.cellA}</td>
+          <td class="cell-comp">${r.cellB}</td>
+          <td class="cell-winner">${winIcon}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('csv-btn').style.display = 'inline-block';
+    }
+
+    async function runComparison() {
+      const url1 = document.getElementById('url1').value.trim();
+      const url2 = document.getElementById('url2').value.trim();
+
+      if (!url1 || !url2) { setStatus('❌ Please enter both URLs.', '#f87171'); return; }
+      if (!isValidUrl(url1)) { setStatus('❌ Your Page URL is invalid.', '#f87171'); return; }
+      if (!isValidUrl(url2)) { setStatus('❌ Competitor Page URL is invalid.', '#f87171'); return; }
+
+      const btn = document.getElementById('compare-btn');
+      btn.disabled = true;
+      document.getElementById('results').style.display = 'none';
+      setProgress(10);
+      setStatus('⏳ Fetching your page...', '#888');
+
+      let html1, html2;
+      try {
+        html1 = await fetchPage(url1);
+        setProgress(40);
+        setStatus('⏳ Fetching competitor page...', '#888');
+      } catch (e) {
+        setStatus('❌ Failed to fetch your page: ' + e.message, '#f87171');
+        setProgress(0);
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        html2 = await fetchPage(url2);
+        setProgress(70);
+        setStatus('⏳ Analyzing pages...', '#888');
+      } catch (e) {
+        setStatus('❌ Failed to fetch competitor page: ' + e.message, '#f87171');
+        setProgress(0);
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        const dataA = parsePage(html1, url1);
+        const dataB = parsePage(html2, url2);
+        setProgress(90);
+
+        const result = buildComparison(dataA, dataB);
+        renderResults(result, url1, url2);
+        setProgress(100);
+        setTimeout(() => setProgress(0), 500);
+        setStatus('✅ Comparison complete!', '#4ade80');
+      } catch (e) {
+        setStatus('❌ Error analyzing pages: ' + e.message, '#f87171');
+        setProgress(0);
+      }
+      btn.disabled = false;
+    }
+
+    function stripHtml(s) {
+      const d = document.createElement('div');
+      d.innerHTML = s;
+      return d.textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    function exportCSV() {
+      if (!comparisonData.length) return;
+      const url1 = document.getElementById('url1').value.trim();
+      const url2 = document.getElementById('url2').value.trim();
+      const csvRows = [
+        ['Metric', 'Your Page (' + url1 + ')', 'Competitor (' + url2 + ')', 'Winner']
+      ];
+      comparisonData.forEach(r => {
+        const a = stripHtml(r.cellA);
+        const b = stripHtml(r.cellB);
+        const w = r.winner === 'a' ? 'Your Page' : r.winner === 'b' ? 'Competitor' : 'Tie';
+        csvRows.push([r.name, a, b, w]);
+      });
+      const csv = csvRows.map(row => row.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'page-comparison.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // Enter key triggers comparison
+    document.addEventListener('DOMContentLoaded', () => {
+      ['url1', 'url2'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+          if (e.key === 'Enter') runComparison();
+        });
+      });
+    });
+  </script>
+</body>
+</html>
