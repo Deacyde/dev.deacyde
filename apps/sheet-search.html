@@ -135,9 +135,11 @@
       const resolved = {};
       for (const [key, candidates] of Object.entries(COL_NAMES)) {
         const idx = h.findIndex(col => candidates.some(c => col.includes(c)));
-        resolved[key] = idx >= 0 ? idx : COLS[key]; // fallback to hardcoded
+        resolved[key] = idx >= 0 ? idx : COLS[key];
       }
       COLS = resolved;
+      console.log('Headers:', h);
+      console.log('Resolved COLS:', COLS);
     }
 
     function setStatus(msg, type = '') {
