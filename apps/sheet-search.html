@@ -76,7 +76,7 @@
     </div>
     <div id="status-msg"></div>
     <div style="margin-top:0.9rem; font-size:0.8rem; color:#555;">
-      💡 In Google Sheets: <strong>File → Share → Publish to web</strong> → select sheet → <strong>CSV</strong> → copy link
+      💡 Just paste any Google Sheet URL — set sharing to <strong>"Anyone with the link can view"</strong> and the app handles the rest. No need to publish.
     </div>
   </div>
 
@@ -155,18 +155,31 @@
       setStatus(`✓ Loaded ${allRows.length} rows from ${source}`, 'ok');
     }
 
+    function toCSVExportURL(input) {
+      // Already a direct CSV export or published URL — use as-is
+      if (input.includes('output=csv') || input.includes('format=csv')) return input;
+      // Standard Google Sheet URL: extract sheet ID and optional gid
+      const idMatch = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (!idMatch) return input; // not a sheets URL, try raw
+      const sheetId = idMatch[1];
+      const gidMatch = input.match(/[#&?]gid=(\d+)/);
+      const gid = gidMatch ? gidMatch[1] : '0';
+      return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+    }
+
     async function loadFromURL() {
-      const url = document.getElementById('sheet-url').value.trim();
-      if (!url) { setStatus('Please enter a URL.', 'error'); return; }
+      const raw = document.getElementById('sheet-url').value.trim();
+      if (!raw) { setStatus('Please enter a URL.', 'error'); return; }
+      const url = toCSVExportURL(raw);
       setStatus('Fetching…');
       try {
         const proxy = `https://empty-bonus-280d.muddy-river-68bb.workers.dev/?url=${encodeURIComponent(url)}`;
         const res = await fetch(proxy);
         const data = await res.json();
-        if (!data.contents) throw new Error('Empty response');
+        if (!data.contents || data.contents.trim().startsWith('<')) throw new Error('Got HTML — check sharing settings');
         loadData(data.contents, 'Google Sheets');
       } catch(e) {
-        setStatus('Failed to fetch sheet. Make sure it is published as CSV and the URL is correct.', 'error');
+        setStatus(`Failed: ${e.message}. Make sure sharing is set to "Anyone with the link can view".`, 'error');
       }
     }
 
