@@ -198,6 +198,7 @@ window.addEventListener('keydown', e => {
   if (gameState === 'title' && e.code === 'Space') startGame();
   if ((gameState === 'levelTransition' || gameState === 'win') && e.code === 'Space') continueAfterLevel();
   if (gameState === 'gameOver' && e.code === 'Space') initGame();
+  if (gameState === 'playing' && e.code === 'KeyB') handleBomb();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
