@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEO Slot Machine</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    :root {
+      --green:   #00ff41;
+      --cyan:    #00e5ff;
+      --magenta: #ff00ff;
+      --yellow:  #ffe600;
+      --dark:    #050a05;
+      --panel:   #0d1a0d;
+      --border:  #00ff41;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--dark);
+      color: var(--green);
+      font-family: 'Press Start 2P', monospace, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.18) 2px,
+        rgba(0,0,0,0.18) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* CRT flicker */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0,255,65,0.015);
+      pointer-events: none;
+      z-index: 9998;
+      animation: flicker 8s infinite;
+    }
+
+    @keyframes flicker {
+      0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+      20%,22%,24%,55% { opacity: 0.85; }
+    }
+
+    /* Back link */
+    .back {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      color: #00ff4180;
+      text-decoration: none;
+      font-size: 0.5rem;
+      z-index: 100;
+    }
+    .back:hover { color: var(--green); }
+
+    /* Cabinet */
+    .cabinet {
+      background: var(--panel);
+      border: 4px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem 2.5rem 2.5rem;
+      width: min(520px, 95vw);
+      box-shadow: 0 0 40px #00ff4140, 0 0 80px #00ff4115, inset 0 0 20px #00ff4108;
+      position: relative;
+    }
+
+    /* Title */
+    .title {
+      text-align: center;
+      font-size: clamp(0.65rem, 2.5vw, 0.9rem);
+      color: var(--yellow);
+      text-shadow: 0 0 10px var(--yellow), 0 0 20px var(--yellow), 0 0 40px #ff990080;
+      margin-bottom: 0.4rem;
+      animation: titlePulse 2s ease-in-out infinite;
+      letter-spacing: 0.05em;
+    }
+    @keyframes titlePulse {
+      0%,100% { text-shadow: 0 0 10px var(--yellow), 0 0 20px var(--yellow); }
+      50%      { text-shadow: 0 0 20px var(--yellow), 0 0 40px var(--yellow), 0 0 60px #ff990080; }
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.4rem;
+      color: var(--cyan);
+      margin-bottom: 1.5rem;
+      opacity: 0.8;
+    }
+
+    /* Score bar */
+    .scorebar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.45rem;
+      color: var(--cyan);
+      border: 2px solid #00e5ff40;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 1.5rem;
+      background: #001a2050;
+    }
+    .scorebar span { color: var(--green); }
+
+    /* Reels container */
+    .reels-wrap {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .reel {
+      flex: 1;
+      height: 110px;
+      background: #000;
+      border: 3px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      border-radius: 2px;
+      box-shadow: inset 0 0 15px #000, 0 0 8px #00ff4140;
+    }
+
+    /* Highlight line */
+    .reel::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0; right: 0;
+      height: 38px;
+      transform: translateY(-50%);
+      border-top: 2px solid var(--cyan);
+      border-bottom: 2px solid var(--cyan);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .reel-strip {
+      position: absolute;
+      left: 0; right: 0;
+      top: 0;
+      transition: none;
+      will-change: transform;
+    }
+
+    .reel-symbol {
+      height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.4rem, 1.8vw, 0.55rem);
+      color: var(--green);
+      text-align: center;
+      line-height: 1.5;
+      padding: 0 4px;
+      user-select: none;
+    }
+
+    .reel-symbol .icon { font-size: clamp(1.2rem, 4vw, 1.6rem); margin-bottom: 4px; display: block; }
+
+    /* Win flash */
+    .reel.winner { animation: reelFlash 0.4s step-end 6; }
+    @keyframes reelFlash {
+      0%,100% { border-color: var(--border); box-shadow: inset 0 0 15px #000, 0 0 8px #00ff4140; }
+      50%      { border-color: var(--yellow); box-shadow: inset 0 0 15px #000, 0 0 25px var(--yellow); }
+    }
+
+    /* Result banner */
+    .result-banner {
+      text-align: center;
+      font-size: clamp(0.55rem, 2vw, 0.75rem);
+      min-height: 2rem;
+      margin-bottom: 1.25rem;
+      padding: 0.5rem;
+      letter-spacing: 0.05em;
+      transition: opacity 0.3s;
+    }
+    .result-banner.jackpot { color: var(--yellow); animation: bannerFlash 0.3s step-end infinite; }
+    .result-banner.win     { color: var(--magenta); }
+    .result-banner.lose    { color: #ff4444; }
+    @keyframes bannerFlash {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.2; }
+    }
+
+    /* Spin button */
+    .spin-btn {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      background: #001200;
+      border: 4px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: clamp(0.65rem, 2.5vw, 0.9rem);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      box-shadow: 0 0 15px #00ff4160, inset 0 0 10px #00ff4120;
+      transition: all 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+    .spin-btn:hover:not(:disabled) {
+      background: #002800;
+      box-shadow: 0 0 30px var(--green), inset 0 0 15px #00ff4130;
+      color: #fff;
+    }
+    .spin-btn:active:not(:disabled) {
+      transform: translateY(2px);
+      box-shadow: 0 0 8px var(--green);
+    }
+    .spin-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: #004400;
+      color: #004400;
+    }
+    .spin-btn.flashing { animation: btnFlash 0.2s step-end infinite; }
+    @keyframes btnFlash {
+      0%,100% { border-color: var(--green); color: var(--green); }
+      50%      { border-color: var(--yellow); color: var(--yellow); }
+    }
+
+    /* Credits footer */
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.38rem;
+      color: #00ff4150;
+      margin-top: 1rem;
+    }
+
+    /* Coin animation */
+    .coin {
+      position: fixed;
+      font-size: 1.5rem;
+      pointer-events: none;
+      z-index: 200;
+      animation: coinDrop 0.6s ease-in forwards;
+    }
+    @keyframes coinDrop {
+      0%   { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(60px) rotate(360deg); opacity: 0; }
+    }
+
+    /* Screen shake */
+    @keyframes shake {
+      0%,100% { transform: translate(0,0); }
+      15%      { transform: translate(-6px, 3px); }
+      30%      { transform: translate(5px, -4px); }
+      45%      { transform: translate(-4px, 5px); }
+      60%      { transform: translate(6px, -3px); }
+      75%      { transform: translate(-3px, 4px); }
+    }
+    .shaking { animation: shake 0.5s ease; }
+
+    /* Blur while spinning */
+    .reel.spinning .reel-strip { filter: blur(1.5px); }
+  </style>
+</head>
+<body>
+  <a href="../index.html" class="back">← BACK</a>
+
+  <div class="cabinet" id="cabinet">
+    <div class="title">★ SEO SLOT MACHINE ★</div>
+    <div class="subtitle">INSERT KEYWORDS TO PLAY</div>
+
+    <div class="scorebar">
+      <div>SCORE: <span id="score">0</span></div>
+      <div>SPINS: <span id="spins">0</span></div>
+      <div>BEST: <span id="best">0</span></div>
+    </div>
+
+    <div class="reels-wrap" id="reels-wrap">
+      <div class="reel" id="reel0"><div class="reel-strip" id="strip0"></div></div>
+      <div class="reel" id="reel1"><div class="reel-strip" id="strip1"></div></div>
+      <div class="reel" id="reel2"><div class="reel-strip" id="strip2"></div></div>
+    </div>
+
+    <div class="result-banner" id="result-banner">PRESS SPIN TO PLAY</div>
+
+    <button class="spin-btn" id="spin-btn" onclick="spin()">▶ SPIN ◀</button>
+
+    <div class="footer-row">
+      <span>SPACEBAR = SPIN</span>
+      <span>3 MATCH = JACKPOT</span>
+    </div>
+  </div>
+
+  <script>
+    // ─── SYMBOLS ───────────────────────────────────────────────────────────────
+    const SYMBOLS = [
+      { icon: '🔑', label: 'KEYWORD',  value: 10 },
+      { icon: '🔗', label: 'BACKLINK', value: 15 },
+      { icon: '📊', label: 'SCHEMA',   value: 20 },
+      { icon: '📈', label: 'TRAFFIC',  value: 12 },
+      { icon: '🥇', label: 'RANKING',  value: 25 },
+      { icon: '🤖', label: 'AI',       value: 8  },
+    ];
+
+    const SEO_JOKES = {
+      jackpot: [
+        "YOUR CONTENT IS NOW #1!",
+        "GOOGLE LOVES YOU TODAY!",
+        "DA 100 ACHIEVED!",
+        "FEATURED SNIPPET UNLOCKED!",
+      ],
+      win: [
+        "NICE! 2 KEYWORDS MATCHED",
+        "YOUR BOUNCE RATE DROPPED!",
+        "PARTIAL MATCH FOUND",
+        "ALMOST INDEXED!",
+      ],
+      lose: [
+        "MANUAL ACTION RECEIVED",
+        "CRAWL BUDGET WASTED",
+        "404: WIN NOT FOUND",
+        "DEINDEXED. TRY AGAIN.",
+        "PENALTY APPLIED",
+      ]
+    };
+
+    // ─── STATE ──────────────────────────────────────────────────────────────────
+    let score = 0, spins = 0, best = 0;
+    let spinning = false;
+    const REEL_HEIGHT = 110; // px per symbol
+
+    // ─── AUDIO ──────────────────────────────────────────────────────────────────
+    let audioCtx;
+
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function playTone(freq, type, dur, vol = 0.3, delay = 0) {
+      try {
+        const ctx = getAudio();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + dur);
+      } catch(e) {}
+    }
+
+    function soundSpin() {
+      for (let i = 0; i < 8; i++) playTone(200 + i * 30, 'square', 0.05, 0.15, i * 0.06);
+    }
+    function soundStop() {
+      playTone(300, 'square', 0.08, 0.2);
+      playTone(200, 'square', 0.08, 0.15, 0.05);
+    }
+    function soundJackpot() {
+      const melody = [523,659,784,1047,784,659,523,659,784,1047];
+      melody.forEach((f,i) => playTone(f, 'square', 0.12, 0.25, i * 0.1));
+    }
+    function soundWin() {
+      [392,523,659].forEach((f,i) => playTone(f, 'square', 0.1, 0.2, i * 0.1));
+    }
+    function soundLose() {
+      [300,250,200,150].forEach((f,i) => playTone(f, 'sawtooth', 0.1, 0.2, i * 0.08));
+    }
+    function soundCoin() {
+      playTone(880, 'square', 0.06, 0.3);
+      playTone(1200,'square', 0.06, 0.25, 0.07);
+    }
+
+    // ─── INIT ───────────────────────────────────────────────────────────────────
+    function initGame() {
+      // Build each reel strip with shuffled symbols (looped for spin illusion)
+      for (let r = 0; r < 3; r++) {
+        const strip = document.getElementById('strip' + r);
+        // Build a long strip: 30 symbols
+        let html = '';
+        for (let i = 0; i < 30; i++) {
+          const s = SYMBOLS[i % SYMBOLS.length];
+          html += `<div class="reel-symbol">
+            <span class="icon">${s.icon}</span>
+            <span>${s.label}</span>
+          </div>`;
+        }
+        strip.innerHTML = html;
+        // Start at a random position
+        const startIdx = Math.floor(Math.random() * SYMBOLS.length);
+        strip.style.transform = `translateY(-${startIdx * REEL_HEIGHT}px)`;
+      }
+    }
+
+    // ─── SPIN ───────────────────────────────────────────────────────────────────
+    function spin() {
+      if (spinning) return;
+      spinning = true;
+
+      const btn = document.getElementById('spin-btn');
+      btn.disabled = true;
+      btn.classList.remove('flashing');
+
+      // Clear previous winners
+      for (let r = 0; r < 3; r++) {
+        document.getElementById('reel' + r).classList.remove('winner', 'spinning');
+      }
+      document.getElementById('result-banner').className = 'result-banner';
+      document.getElementById('result-banner').textContent = '...';
+
+      // Coin insert
+      spawnCoin();
+      soundCoin();
+      spins++;
+      updateScore(0);
+
+      soundSpin();
+
+      // Pick final symbols
+      const results = [
+        Math.floor(Math.random() * SYMBOLS.length),
+        Math.floor(Math.random() * SYMBOLS.length),
+        Math.floor(Math.random() * SYMBOLS.length),
+      ];
+
+      // Spin each reel with staggered stop
+      const stopDelays = [900, 1400, 1900];
+
+      for (let r = 0; r < 3; r++) {
+        const reel = document.getElementById('reel' + r);
+        const strip = document.getElementById('strip' + r);
+        reel.classList.add('spinning');
+        spinReel(strip, results[r], stopDelays[r], r);
+      }
+
+      // Evaluate after last reel stops
+      setTimeout(() => {
+        spinning = false;
+        evaluateWin(results);
+        btn.disabled = false;
+      }, stopDelays[2] + 300);
+    }
+
+    function spinReel(strip, finalIdx, stopDelay, reelIdx) {
+      const totalSymbols = 30;
+      // Animate via requestAnimationFrame scroll
+      const startTime = performance.now();
+      const pixelsPerMs = 0.9; // spin speed
+
+      // Get current Y
+      const currentY = parseFloat(strip.style.transform.replace('translateY(', '').replace('px)', '')) || 0;
+
+      // Target Y: land on finalIdx, ensuring we scroll forward at least 2 full loops
+      const loopHeight = SYMBOLS.length * REEL_HEIGHT;
+      const targetBase = finalIdx * REEL_HEIGHT;
+      // Make sure target is ahead of current position by at least 2 loops
+      let target = -(targetBase + loopHeight * 3);
+
+      // Normalise current position
+      const normalised = ((currentY % (totalSymbols * REEL_HEIGHT)) - (totalSymbols * REEL_HEIGHT)) % (totalSymbols * REEL_HEIGHT);
+
+      function animate(now) {
+        const elapsed = now - startTime;
+        if (elapsed < stopDelay) {
+          // Fast spin: keep scrolling
+          const y = currentY - elapsed * pixelsPerMs;
+          // Wrap within strip bounds
+          const wrapped = ((y % (totalSymbols * REEL_HEIGHT)) - totalSymbols * REEL_HEIGHT) % (totalSymbols * REEL_HEIGHT);
+          strip.style.transform = `translateY(${wrapped < 0 ? wrapped : wrapped - totalSymbols * REEL_HEIGHT}px)`;
+          requestAnimationFrame(animate);
+        } else {
+          // Ease into final position
+          const reel = document.getElementById('reel' + reelIdx);
+          reel.classList.remove('spinning');
+          // Snap to correct symbol
+          const snapY = -(finalIdx * REEL_HEIGHT);
+          strip.style.transform = `translateY(${snapY}px)`;
+          soundStop();
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // ─── EVALUATE ───────────────────────────────────────────────────────────────
+    function evaluateWin(results) {
+      const banner = document.getElementById('result-banner');
+      const counts = {};
+      results.forEach(i => counts[i] = (counts[i] || 0) + 1);
+      const maxMatch = Math.max(...Object.values(counts));
+
+      if (maxMatch === 3) {
+        // Jackpot
+        const sym = SYMBOLS[results[0]];
+        const points = sym.value * 10;
+        updateScore(points);
+        banner.textContent = '🎉 JACKPOT! ' + pickRandom(SEO_JOKES.jackpot) + ' +' + points;
+        banner.className = 'result-banner jackpot';
+        for (let r = 0; r < 3; r++) document.getElementById('reel' + r).classList.add('winner');
+        soundJackpot();
+        shakeScreen();
+        document.getElementById('spin-btn').classList.add('flashing');
+        setTimeout(() => document.getElementById('spin-btn').classList.remove('flashing'), 2000);
+      } else if (maxMatch === 2) {
+        // Find the matching symbol
+        const matchIdx = parseInt(Object.entries(counts).find(([,v]) => v === 2)[0]);
+        const points = SYMBOLS[matchIdx].value * 3;
+        updateScore(points);
+        banner.textContent = '✨ ' + pickRandom(SEO_JOKES.win) + ' +' + points;
+        banner.className = 'result-banner win';
+        // Flash matching reels
+        results.forEach((r, i) => {
+          if (r === matchIdx) document.getElementById('reel' + i).classList.add('winner');
+        });
+        soundWin();
+      } else {
+        banner.textContent = '💀 ' + pickRandom(SEO_JOKES.lose);
+        banner.className = 'result-banner lose';
+        soundLose();
+      }
+    }
+
+    // ─── SCORE ──────────────────────────────────────────────────────────────────
+    function updateScore(add) {
+      score += add;
+      if (score > best) best = score;
+      document.getElementById('score').textContent = score;
+      document.getElementById('spins').textContent = spins;
+      document.getElementById('best').textContent = best;
+    }
+
+    // ─── HELPERS ────────────────────────────────────────────────────────────────
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function shakeScreen() {
+      const cab = document.getElementById('cabinet');
+      cab.classList.remove('shaking');
+      void cab.offsetWidth; // reflow
+      cab.classList.add('shaking');
+      setTimeout(() => cab.classList.remove('shaking'), 500);
+    }
+
+    function spawnCoin() {
+      const coin = document.createElement('div');
+      coin.className = 'coin';
+      coin.textContent = '🪙';
+      const cab = document.getElementById('cabinet').getBoundingClientRect();
+      coin.style.left = (cab.left + cab.width / 2 - 12) + 'px';
+      coin.style.top = (cab.top - 10) + 'px';
+      document.body.appendChild(coin);
+      setTimeout(() => coin.remove(), 700);
+    }
+
+    // ─── KEYBOARD ───────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space') { e.preventDefault(); spin(); }
+    });
+
+    // ─── START ──────────────────────────────────────────────────────────────────
+    initGame();
+  </script>
+</body>
+</html>
