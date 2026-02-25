@@ -1,0 +1,90 @@
+=====================================
+  DEACYDE / MICHAEL WILLIAMS
+  COPILOT SESSION NOTES
+  Last updated: 2026-02-25
+=====================================
+
+RULE #1 — BEFORE ANY WORK ON ANY MACHINE
+-----------------------------------------
+Always git pull before starting. Never assume the repo is current.
+
+  deacyde.com repo:   git pull origin master
+  deacyde-site repo:  git pull origin main
+
+RULE #2 — AFTER FINISHING ON ANY MACHINE
+------------------------------------------
+Commit and push everything before switching machines.
+For deacyde-site, push to BOTH branches:
+
+  git checkout production && git merge main && git push origin production
+  git checkout main && git push origin main
+
+
+=====================================
+  REPOS
+=====================================
+
+Deacyde/deacyde-site
+  → deploys to: dev.deacyde.com
+  → host: Cloudflare Pages (static only, no PHP)
+  → branches: main (dev), production (live)
+  → local path Machine A: /tmp/deacyde-site
+
+Deacyde/deacyde.com
+  → deploys to: deacyde.com
+  → host: GoDaddy shared hosting (PHP supported)
+  → branch: master
+  → local path Machine A: /tmp/deacyde-com-fresh
+
+Deacyde/urlmap (private)
+  → standalone source reference for the URL Keyword Map PHP app
+  → files also live in deacyde.com repo at apps/urlmap/
+
+
+=====================================
+  APPS BUILT (single-file HTML)
+=====================================
+
+All in deacyde-site/apps/ and deacyde.com/apps/
+
+  anomaly-detector.html  — GA4/GSC CSV anomaly detection
+  csv-template-maker.html — SEO CSV template generator
+  noter.html             — SQLite (sql.js) note-taking app
+  url-map.html           — browser-only URL/keyword map (sql.js)
+  apps/urlmap/           — PHP + SQLite version (multi-user, GoDaddy)
+
+
+=====================================
+  GAMES BUILT
+=====================================
+
+All in deacyde-site/games/
+
+  seod.html     — SEO'd scroll shooter (arrows/WASD, Space/Z fire, B missile, X bomb)
+  pinball.html  — SEO Pinball
+  plinko.html   — SEO Plinko
+  + 5 others linked from index.html
+
+
+=====================================
+  GODADDY NOTES
+=====================================
+
+- PHP + SQLite works on GoDaddy shared hosting
+- After deploying urlmap: set apps/urlmap/data/ permissions to 755
+- Visit deacyde.com/apps/urlmap/ to use the app
+
+
+=====================================
+  IMPORTANT REMINDERS
+=====================================
+
+- deacyde.com uses ABSOLUTE URLs for assets (https://deacyde.com/css/style.css)
+- deacyde-site uses RELATIVE paths — don't mix them when syncing index.html
+- noter localStorage key: noter_db
+- url-map localStorage key: urlmap_db
+
+
+=====================================
+  END OF NOTES
+=====================================
