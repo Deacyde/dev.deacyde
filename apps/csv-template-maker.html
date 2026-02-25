@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO CSV Template Maker — Deacyde</title>
+<meta name="description" content="Generate ready-to-use CSV templates for SEO workflows: content audits, redirect mapping, SERP tracking, technical QA, and more. Download instantly, Excel-compatible.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --card: #1a1a1a;
+    --border: #333;
+    --text: #fff;
+    --muted: #888;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --accent-light: rgba(124,58,237,0.15);
+    --radius: 10px;
+    --font: 'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 1.25rem 1.5rem;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--text); text-decoration: none; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem 1.5rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .header-inner {
+    padding-top: 1rem;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+  }
+
+  .desc {
+    color: var(--muted);
+    font-size: 0.975rem;
+    max-width: 620px;
+    line-height: 1.65;
+  }
+
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #ccc;
+  }
+
+  .select-wrapper {
+    position: relative;
+  }
+
+  select {
+    width: 100%;
+    background: #111;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 0.65rem 2.5rem 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    font-family: var(--font);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .select-arrow {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
+  input[type="text"] {
+    background: #111;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    font-family: var(--font);
+    width: 100%;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .checkbox-row input[type="checkbox"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #111;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .checkbox-row input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox-row input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px; top: 1px;
+    width: 6px; height: 10px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+  }
+  .checkbox-row span {
+    font-size: 0.9rem;
+    color: #ccc;
+  }
+
+  .btn-download {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 0.75rem 1.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    align-self: flex-start;
+  }
+  .btn-download:hover { background: var(--accent-hover); }
+  .btn-download:active { transform: scale(0.97); }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .preview-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-copy {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .btn-copy:hover { color: var(--text); border-color: #555; }
+  .btn-copy.copied { color: #4ade80; border-color: #4ade80; }
+
+  .preview-box {
+    background: #111;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #ccc;
+    overflow-x: auto;
+    white-space: pre;
+    min-height: 120px;
+    line-height: 1.55;
+  }
+</style>
+</head>
+<body>
+
+<div style="max-width:800px;margin:0 auto;">
+  <a href="../index.html" class="back-link">← Back to Deacyde.com</a>
+</div>
+
+<header>
+  <div class="header-inner">
+    <h1>SEO CSV Template Maker</h1>
+    <p class="desc">Pick a template, configure your options, and download a properly formatted CSV ready to drop into Excel, Google Sheets, or your favourite SEO tool. All templates use standard headers for common SEO workflows so you can start auditing immediately.</p>
+  </div>
+</header>
+
+<main>
+  <div class="card controls">
+
+    <div class="field">
+      <label for="templateSelect">Template</label>
+      <div class="select-wrapper">
+        <select id="templateSelect"></select>
+        <span class="select-arrow">▼</span>
+      </div>
+    </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="includeExamples" checked>
+      <span>Include example rows</span>
+    </label>
+
+    <div class="field">
+      <label for="fileNameInput">File name</label>
+      <input type="text" id="fileNameInput" placeholder="template.csv">
+    </div>
+
+    <button class="btn-download" id="downloadBtn">⬇ Download CSV</button>
+
+  </div>
+
+  <div class="card">
+    <div class="preview-header">
+      <span class="preview-title">Preview <span style="font-weight:400;text-transform:none;letter-spacing:0;">(first 10 lines)</span></span>
+      <button class="btn-copy" id="copyBtn">Copy to clipboard</button>
+    </div>
+    <div class="preview-box" id="previewBox"></div>
+  </div>
+</main>
+
+<script>
+// ─── Template Definitions ────────────────────────────────────────────────────
+
+function getTemplateConfig(templateId) {
+  const templates = {
+    'content-audit': {
+      name: 'Content Audit',
+      filename: 'content-audit.csv',
+      headers: ['URL','Content Type','Topic','Target Keyword','Secondary Keywords','Intent','Funnel Stage','Title','Meta Description','H1','Word Count','Organic Sessions','GSC Clicks','GSC Impressions','CTR','Avg Position','Conversions','Last Updated','Status','Priority','Notes','Owner','Due Date'],
+      examples: [
+        ['https://example.com/page/blog-post-title/','Blog Post','Technical SEO','technical seo audit','seo audit checklist, seo audit tool','Informational','TOFU','How to Do a Technical SEO Audit in 2024','A step-by-step guide to running a technical SEO audit and fixing common issues.','How to Do a Technical SEO Audit','2400','1850','210','8900','2.36%','8.2','4','2024-11-01','Published','High','Update stats section','Jane Smith','2025-02-28'],
+        ['https://example.com/page/product-landing/','Landing Page','SEO Software','best seo software','seo tools, keyword research software','Commercial','BOFU','Best SEO Software for Agencies & In-House Teams','Compare the top SEO software platforms with pricing, features, and honest reviews.','Best SEO Software: Top Picks for 2024','3100','4200','390','19400','2.01%','5.7','28','2024-10-15','Published','High','Add comparison table','Tom Lee','2025-01-31'],
+        ['https://example.com/page/what-is-seo/','Pillar Page','SEO Basics','what is seo','seo definition, seo meaning, search engine optimization','Informational','TOFU','What Is SEO? A Beginner\'s Guide to Search Engine Optimisation','Learn what SEO is, how it works, and why it matters for your website in plain language.','What Is SEO? The Complete Beginners Guide','5800','920','88','5100','1.72%','14.3','1','2024-09-20','Needs Update','Medium','Refresh examples','Jane Smith','2025-03-15'],
+      ]
+    },
+    'url-keyword-map': {
+      name: 'URL to Keyword Map',
+      filename: 'url-keyword-map.csv',
+      headers: ['URL','Primary Keyword','Secondary Keywords','Topic Cluster','Search Intent','Page Type','Funnel Stage','Canonical','Indexable','Notes'],
+      examples: [
+        ['https://example.com/page/link-building-guide/','link building guide','link building strategies, how to build backlinks, link acquisition','Link Building','Informational','Blog Post','TOFU','https://example.com/page/link-building-guide/','Yes','Cornerstone content – do not noindex'],
+        ['https://example.com/page/pricing/','seo agency pricing','seo pricing, seo cost, how much does seo cost','Commercial','Commercial','Pricing Page','BOFU','https://example.com/page/pricing/','Yes','A/B test CTA copy'],
+        ['https://example.com/page/thank-you/','','','','','Thank You Page','','https://example.com/page/thank-you/','No','Conversion confirmation – keep noindexed'],
+      ]
+    },
+    'on-page-checklist': {
+      name: 'On-Page Checklist',
+      filename: 'on-page-checklist.csv',
+      headers: ['URL','Primary Keyword','Title Status','Meta Status','H1 Status','H2 Coverage','Image Alt Coverage','Internal Links','External Links','Schema Present','CTA Present','Readability','Actions','Owner','Due Date'],
+      examples: [
+        ['https://example.com/page/seo-checklist/','seo checklist','OK','OK','OK','Good','100%','12','3','Yes','Yes','Good','No action needed','Jane Smith','—'],
+        ['https://example.com/page/keyword-research/','keyword research','Too Long','Missing','Mismatch','Partial','60%','5','1','No','No','Needs Work','Rewrite title, add meta, fix H1, add schema, add CTA','Tom Lee','2025-02-14'],
+        ['https://example.com/page/seo-tools/','seo tools','OK','Too Short','OK','Good','80%','8','4','Yes','Yes','Good','Expand meta description','Jane Smith','2025-01-31'],
+      ]
+    },
+    'redirect-mapping': {
+      name: 'Redirect Mapping',
+      filename: 'redirect-mapping.csv',
+      headers: ['Old URL','New URL','Redirect Type','Notes','Implemented','Date Implemented'],
+      examples: [
+        ['https://example.com/page/old-blog-post/','https://example.com/page/updated-blog-post/','301','Page migrated during site restructure','Yes','2024-10-01'],
+        ['https://example.com/page/services/seo-audits','https://example.com/page/seo-audit-service/','301','Permalink cleaned up','Yes','2024-10-01'],
+        ['https://example.com/page/about-us','https://example.com/page/about/','301','Trailing slash standardisation','No',''],
+      ]
+    },
+    'internal-linking': {
+      name: 'Internal Linking Plan',
+      filename: 'internal-linking-plan.csv',
+      headers: ['Source URL','Target URL','Anchor Text','Placement','Priority','Implemented','Notes'],
+      examples: [
+        ['https://example.com/page/technical-seo-guide/','https://example.com/page/crawl-budget-optimisation/','crawl budget optimisation','Body – paragraph 4','High','Yes','Added 2024-10-12'],
+        ['https://example.com/page/seo-tools/','https://example.com/page/keyword-research-tool/','keyword research tool','Body – tools list section','High','No',''],
+        ['https://example.com/page/blog/','https://example.com/page/seo-checklist/','complete SEO checklist','Sidebar widget','Medium','No','Consider adding to featured posts too'],
+      ]
+    },
+    'technical-seo-qa': {
+      name: 'Technical SEO QA',
+      filename: 'technical-seo-qa.csv',
+      headers: ['URL','Status Code','Indexable','Canonical','Robots Meta','Hreflang','Schema','Title Length','Meta Length','H1 Count','CWV Note','Issues','Severity','Owner','Fix ETA'],
+      examples: [
+        ['https://example.com/page/homepage/','200','Yes','Self-referencing','index, follow','N/A','WebSite, Organization','58','148','1','Pass','None','None','—','—'],
+        ['https://example.com/page/old-product/','301','No','https://example.com/page/new-product/','noindex','N/A','None','0','0','0','N/A','Redirect chain detected; source noindexed','High','Tom Lee','2025-01-20'],
+        ['https://example.com/page/blog-category/','200','Yes','Self-referencing','index, follow','N/A','None','72','165','2','Needs LCP fix','Duplicate H1; missing schema; LCP > 4 s','Medium','Jane Smith','2025-02-28'],
+      ]
+    },
+    'serp-tracking': {
+      name: 'SERP Tracking',
+      filename: 'serp-tracking.csv',
+      headers: ['Keyword','Location','Device','Ranking URL','Position','Change','Search Volume','Difficulty','SERP Features','Notes','Date Captured'],
+      examples: [
+        ['technical seo audit','United Kingdom','Desktop','https://example.com/page/technical-seo-audit/','6','+2','2900','62','Featured Snippet, People Also Ask','Entered top 10 this week','2025-01-15'],
+        ['best seo software','United States','Mobile','https://example.com/page/best-seo-software/','14','-3','8100','74','Image Pack, Ads','Dropped – check for SERP layout change','2025-01-15'],
+        ['what is keyword research','United States','Desktop','https://example.com/page/keyword-research-guide/','3','0','5400','55','Featured Snippet, Video Carousel','Holding position; featured snippet owned by competitor','2025-01-15'],
+      ]
+    }
+  };
+  return templates[templateId] || null;
+}
+
+// ─── CSV Builder ─────────────────────────────────────────────────────────────
+
+function escapeField(value) {
+  const str = String(value ?? '');
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+function buildCsv(config, includeExamples) {
+  const BOM = '\uFEFF';
+  const CRLF = '\r\n';
+  const rows = [];
+  rows.push(config.headers.map(escapeField).join(','));
+  if (includeExamples && config.examples) {
+    config.examples.forEach(row => {
+      rows.push(row.map(escapeField).join(','));
+    });
+  }
+  return BOM + rows.join(CRLF) + CRLF;
+}
+
+// ─── Download ────────────────────────────────────────────────────────────────
+
+function downloadCsv(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─── Preview ─────────────────────────────────────────────────────────────────
+
+function renderPreview(csvContent) {
+  const lines = csvContent.replace(/^\uFEFF/, '').split('\r\n').filter(l => l.length > 0);
+  const preview = lines.slice(0, 10).join('\n');
+  document.getElementById('previewBox').textContent = preview;
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let userEditedFilename = false;
+
+function getCurrentCsv() {
+  const templateId = document.getElementById('templateSelect').value;
+  const includeExamples = document.getElementById('includeExamples').checked;
+  const config = getTemplateConfig(templateId);
+  if (!config) return '';
+  return buildCsv(config, includeExamples);
+}
+
+function updateAll() {
+  const csv = getCurrentCsv();
+  renderPreview(csv);
+  savePrefs();
+}
+
+function savePrefs() {
+  try {
+    localStorage.setItem('csvmaker_template', document.getElementById('templateSelect').value);
+    localStorage.setItem('csvmaker_examples', document.getElementById('includeExamples').checked ? '1' : '0');
+  } catch(e) {}
+}
+
+function loadPrefs() {
+  try {
+    const t = localStorage.getItem('csvmaker_template');
+    const e = localStorage.getItem('csvmaker_examples');
+    if (t) document.getElementById('templateSelect').value = t;
+    if (e !== null) document.getElementById('includeExamples').checked = e === '1';
+  } catch(e) {}
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+
+const TEMPLATE_IDS = [
+  'content-audit',
+  'url-keyword-map',
+  'on-page-checklist',
+  'redirect-mapping',
+  'internal-linking',
+  'technical-seo-qa',
+  'serp-tracking'
+];
+
+function buildSelect() {
+  const sel = document.getElementById('templateSelect');
+  TEMPLATE_IDS.forEach(id => {
+    const cfg = getTemplateConfig(id);
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = cfg.name + ' (' + cfg.headers.length + ' cols)';
+    sel.appendChild(opt);
+  });
+}
+
+function init() {
+  buildSelect();
+  loadPrefs();
+
+  const sel = document.getElementById('templateSelect');
+  const filenameInput = document.getElementById('fileNameInput');
+
+  // Set initial filename
+  const initialCfg = getTemplateConfig(sel.value);
+  filenameInput.value = initialCfg ? initialCfg.filename : 'template.csv';
+
+  sel.addEventListener('change', () => {
+    if (!userEditedFilename) {
+      const cfg = getTemplateConfig(sel.value);
+      filenameInput.value = cfg ? cfg.filename : 'template.csv';
+    }
+    updateAll();
+  });
+
+  filenameInput.addEventListener('input', () => {
+    userEditedFilename = filenameInput.value.trim() !== (getTemplateConfig(sel.value)?.filename ?? 'template.csv');
+  });
+
+  document.getElementById('includeExamples').addEventListener('change', updateAll);
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const csv = getCurrentCsv();
+    const filename = filenameInput.value.trim() || 'template.csv';
+    downloadCsv(filename.endsWith('.csv') ? filename : filename + '.csv', csv);
+  });
+
+  const copyBtn = document.getElementById('copyBtn');
+  copyBtn.addEventListener('click', () => {
+    const csv = getCurrentCsv();
+    navigator.clipboard.writeText(csv).then(() => {
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy to clipboard';
+        copyBtn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = csv;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy to clipboard';
+        copyBtn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  updateAll();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
