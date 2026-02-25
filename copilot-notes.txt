@@ -4,17 +4,26 @@
   Last updated: 2026-02-25
 =====================================
 
+!! MACHINE B — ONE-TIME SETUP (do this once after repo rename) !!
+------------------------------------------------------------------
+The dev site repo was renamed from deacyde-site to dev.deacyde.
+Run this once on the other machine to update the remote:
+
+  git remote set-url origin https://github.com/Deacyde/dev.deacyde.git
+  git pull origin main
+
+
 RULE #1 — BEFORE ANY WORK ON ANY MACHINE
 -----------------------------------------
 Always git pull before starting. Never assume the repo is current.
 
   deacyde.com repo:   git pull origin master
-  deacyde-site repo:  git pull origin main
+  dev.deacyde repo:   git pull origin main
 
 RULE #2 — AFTER FINISHING ON ANY MACHINE
 ------------------------------------------
 Commit and push everything before switching machines.
-For deacyde-site, push to BOTH branches:
+For dev.deacyde, push to BOTH branches:
 
   git checkout production && git merge main && git push origin production
   git checkout main && git push origin main
@@ -24,7 +33,7 @@ For deacyde-site, push to BOTH branches:
   REPOS
 =====================================
 
-Deacyde/deacyde-site
+Deacyde/dev.deacyde
   → deploys to: dev.deacyde.com
   → host: Cloudflare Pages (static only, no PHP)
   → branches: main (dev), production (live)
