@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Noter — Deacyde.com</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -302,6 +303,26 @@
     color: var(--muted);
   }
 
+  /* ── SIDEBAR FOOTER ── */
+  .sidebar-footer {
+    padding: 0.6rem 0.75rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 0.5rem;
+  }
+  .btn-io {
+    flex: 1;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .btn-io:hover { color: var(--text); border-color: var(--accent); }
+
   /* ── MOBILE ── */
   @media (max-width: 640px) {
     :root { --sidebar-w: 100vw; }
@@ -349,6 +370,11 @@
       <input class="search-input" id="searchInput" type="search" placeholder="Search notes…" autocomplete="off">
     </div>
     <div class="note-list" id="noteList"></div>
+    <div class="sidebar-footer">
+      <button class="btn-io" id="btnExport" title="Download noter.db">⬇ Export .db</button>
+      <button class="btn-io" id="btnImport" title="Import a .db file">⬆ Import .db</button>
+      <input type="file" id="importFileInput" accept=".db" style="display:none">
+    </div>
   </aside>
 
   <!-- EDITOR PANEL -->
@@ -379,7 +405,8 @@
 
 <script>
 (() => {
-  const STORAGE_KEY = 'noter_notes';
+  let db;
+  let SQL;
   let notes = [];
   let activeId = null;
   let saveTimer = null;
@@ -402,19 +429,41 @@
   const editorPanel   = document.getElementById('editorPanel');
   const editorBackBtn = document.getElementById('editorBackBtn');
 
-  /* ── Storage ── */
-  function load() {
-    try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { notes = []; }
+  /* ── DB helpers ── */
+  function saveDb() {
+    const data = db.export();
+    const b64 = btoa(String.fromCharCode(...data));
+    localStorage.setItem('noter_db', b64);
   }
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  function dbRun(sql, params=[]) { db.run(sql, params); saveDb(); }
+
+  function dbQuery(sql, params=[]) {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }
+
+  function setupSchema() {
+    db.run(`CREATE TABLE IF NOT EXISTS notes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT NOT NULL DEFAULT 'Untitled Note',
+      content    TEXT DEFAULT '',
+      pinned     INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`);
+  }
+
+  function loadNotes() {
+    notes = dbQuery('SELECT * FROM notes').map(r => ({ ...r, pinned: !!r.pinned }));
+    renderList();
   }
 
   /* ── Helpers ── */
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-
   function fmtDate(iso) {
     const d = new Date(iso);
     const now = new Date();
@@ -494,7 +543,6 @@
     updateStats();
     updateNoteDate(note);
     renderList();
-    // mobile: show editor
     if (window.innerWidth <= 640) {
       sidebar.classList.add('hidden');
       editorPanel.classList.add('visible');
@@ -531,10 +579,12 @@
   /* ── CRUD ── */
   function createNote() {
     const now = new Date().toISOString();
-    const note = { id: uid(), title: '', content: '', pinned: false, created_at: now, updated_at: now };
-    notes.unshift(note);
-    save();
-    openNote(note.id);
+    dbRun('INSERT INTO notes (title, content, pinned, created_at, updated_at) VALUES (?, ?, 0, ?, ?)',
+      ['', '', now, now]);
+    const rows = dbQuery('SELECT last_insert_rowid() as id');
+    const newId = rows[0].id;
+    loadNotes();
+    openNote(newId);
     titleInput.focus();
   }
 
@@ -542,36 +592,59 @@
     const note = notes.find(n => n.id === id);
     const label = note?.title || 'Untitled Note';
     if (!confirm(`Delete "${label}"?`)) return;
-    notes = notes.filter(n => n.id !== id);
-    save();
-    if (activeId === id) closeEditor();
-    else renderList();
+    dbRun('DELETE FROM notes WHERE id = ?', [id]);
+    if (activeId === id) {
+      activeId = null;
+      noNote.style.display = 'flex';
+      editorInner.style.display = 'none';
+    }
+    loadNotes();
   }
 
   function togglePin(id) {
     const note = notes.find(n => n.id === id);
     if (!note) return;
-    note.pinned = !note.pinned;
-    save();
-    renderList();
+    dbRun('UPDATE notes SET pinned = ? WHERE id = ?', [note.pinned ? 0 : 1, id]);
+    loadNotes();
   }
 
   function persistEdits() {
     if (!activeId) return;
-    const note = notes.find(n => n.id === activeId);
-    if (!note) return;
-    note.title   = titleInput.value;
-    note.content = contentTA.value;
-    note.updated_at = new Date().toISOString();
-    save();
+    const now = new Date().toISOString();
+    dbRun('UPDATE notes SET title = ?, content = ?, updated_at = ? WHERE id = ?',
+      [titleInput.value, contentTA.value, now, activeId]);
     flashSaved();
-    updateNoteDate(note);
-    renderList();
+    loadNotes();
+    const note = notes.find(n => n.id === activeId);
+    if (note) updateNoteDate(note);
   }
 
   function scheduleSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(persistEdits, 500);
+  }
+
+  /* ── Export / Import ── */
+  function exportDb() {
+    const data = db.export();
+    const blob = new Blob([data], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'noter.db';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importDb(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buf = new Uint8Array(e.target.result);
+      db = new SQL.Database(buf);
+      saveDb();
+      loadNotes();
+    };
+    reader.readAsArrayBuffer(file);
   }
 
   /* ── Events ── */
@@ -587,21 +660,21 @@
     if (actionBtn) {
       e.stopPropagation();
       const item = actionBtn.closest('.note-item');
-      const id   = item?.dataset.id;
+      const id   = item?.dataset.id ? Number(item.dataset.id) : null;
       if (!id) return;
       if (actionBtn.dataset.action === 'delete') deleteNote(id);
       if (actionBtn.dataset.action === 'pin')    togglePin(id);
       return;
     }
     const item = e.target.closest('.note-item');
-    if (item) openNote(item.dataset.id);
+    if (item) openNote(Number(item.dataset.id));
   });
 
   titleInput.addEventListener('input', () => { scheduleSave(); });
   contentTA.addEventListener('input', () => { updateStats(); scheduleSave(); });
 
   editorBackBtn.addEventListener('click', () => {
-    persistEdits(); // save before going back
+    persistEdits();
     sidebar.classList.remove('hidden');
     editorPanel.classList.remove('visible');
   });
@@ -627,13 +700,33 @@
     }
   });
 
-  /* ── Init ── */
-  load();
-  renderList();
+  document.getElementById('btnExport').addEventListener('click', exportDb);
+  document.getElementById('btnImport').addEventListener('click', () => {
+    document.getElementById('importFileInput').click();
+  });
+  document.getElementById('importFileInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) importDb(file);
+    e.target.value = '';
+  });
 
-  // If there are notes, auto-open the most recent one
-  const sorted = getSorted(notes);
-  if (sorted.length) openNote(sorted[0].id);
+  /* ── Init ── */
+  initSqlJs({
+    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
+  }).then(SQLLib => {
+    SQL = SQLLib;
+    const saved = localStorage.getItem('noter_db');
+    if (saved) {
+      const buf = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
+      db = new SQL.Database(buf);
+    } else {
+      db = new SQL.Database();
+    }
+    setupSchema();
+    loadNotes();
+    const sorted = getSorted(notes);
+    if (sorted.length) openNote(sorted[0].id);
+  });
 
 })();
 </script>
