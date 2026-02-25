@@ -4,6 +4,21 @@
   Last updated: 2026-02-25
 =====================================
 
+PURPOSE OF THIS FILE
+---------------------
+This file serves two purposes:
+1. Instructions for the other machine before starting work
+2. Context for Copilot to read at the start of each session
+
+When starting a new Copilot session, paste or reference this file
+so Copilot is up to speed on the project, repos, and any recent changes.
+
+Update this file whenever something important changes:
+  - new apps or features built
+  - repo structure changes
+  - deployment notes
+  - anything the next session needs to know
+
 !! MACHINE B — ONE-TIME SETUP (do this once after repo rename) !!
 ------------------------------------------------------------------
 The dev site repo was renamed from deacyde-site to dev.deacyde.
