@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Keyword Map — Deacyde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0d0d;
+  --grid-bg: #111;
+  --header-bg: #1a1a1a;
+  --row-hover: #222;
+  --accent: #7c3aed;
+  --accent-light: #9d5cf0;
+  --text: #fff;
+  --muted: #888;
+  --border: #333;
+  --cell-edit: #7c3aed;
+  --danger: #dc2626;
+  --success: #16a34a;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  overflow: hidden;
+}
+
+a { color: var(--accent-light); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button {
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  transition: background 0.15s, opacity 0.15s;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 13px;
+  background: #1a1a1a;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+/* ── Layout ─────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Back link */
+#back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 16px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+#back-link:hover { color: var(--text); text-decoration: none; }
+
+/* Title bar */
+#title-bar {
+  padding: 12px 16px 10px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+}
+#title-bar h1 { font-size: 18px; font-weight: 700; }
+#title-bar p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+/* Top bar */
+#top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+#search-box {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 6px 10px 6px 32px;
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+}
+.search-wrap svg {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-wrap input {
+  width: 100%;
+  padding-left: 30px;
+  background: #111;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-secondary { background: #222; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #2a2a2a; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #ef4444; }
+
+/* Filter chips */
+#filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 6px;
+  background: var(--header-bg);
+}
+#filter-chips:empty { display: none; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #222;
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 2px 8px 2px 10px;
+  font-size: 11px;
+  color: var(--accent-light);
+}
+.chip button {
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+}
+.chip button:hover { color: var(--text); }
+
+/* Grid container */
+#grid-wrap {
+  flex: 1;
+  overflow: auto;
+  background: var(--grid-bg);
+  position: relative;
+}
+
+/* Grid table */
+#grid-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+#grid-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--header-bg);
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.th-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.th-inner:hover { background: #222; }
+
+.th-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.th-sort { font-size: 10px; color: var(--accent); }
+
+/* Frozen columns */
+th.col-check, td.col-check {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  width: 40px;
+  min-width: 40px;
+  background: var(--header-bg);
+}
+td.col-check { background: var(--grid-bg); }
+
+th.col-url, td.col-url {
+  position: sticky;
+  left: 40px;
+  z-index: 10;
+  width: 300px;
+  min-width: 200px;
+}
+th.col-url { z-index: 12; }
+td.col-url { background: var(--grid-bg); }
+
+#grid-table td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  vertical-align: middle;
+  max-width: 0;
+}
+
+.cell-inner {
+  padding: 6px 10px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 13px;
+}
+.cell-inner:hover { background: rgba(124,58,237,0.08); }
+
+td.editing .cell-inner { padding: 0; }
+
+.cell-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-radius: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  height: 36px;
+}
+
+.cell-flash {
+  animation: flash-green 0.6s ease-out;
+}
+@keyframes flash-green {
+  0% { background: rgba(22,163,74,0.3); }
+  100% { background: transparent; }
+}
+
+tr:hover td { background: var(--row-hover); }
+tr:hover td.col-url, tr:hover td.col-check { background: var(--row-hover); }
+
+tr.selected td { background: rgba(124,58,237,0.1); }
+tr.selected td.col-url, tr.selected td.col-check { background: rgba(124,58,237,0.12); }
+
+.url-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+.favicon { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
+.url-link {
+  color: var(--accent-light);
+  text-decoration: none;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.url-link:hover { text-decoration: underline; }
+
+mark.hl { background: rgba(124,58,237,0.35); color: var(--text); border-radius: 2px; }
+
+/* Add row row */
+#add-row-tr td {
+  border-bottom: none;
+}
+#add-row-btn {
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 10px;
+  width: 100%;
+  text-align: left;
+  border-radius: 0;
+}
+#add-row-btn:hover { background: var(--row-hover); color: var(--text); }
+
+/* + col header */
+.th-add-col .th-inner { justify-content: center; color: var(--muted); }
+.th-add-col .th-inner:hover { color: var(--text); }
+
+/* Bulk action bar */
+#bulk-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(124,58,237,0.15);
+  border-top: 1px solid var(--accent);
+  flex-wrap: wrap;
+}
+#bulk-bar.visible { display: flex; }
+#bulk-bar span { font-size: 12px; color: var(--accent-light); font-weight: 600; }
+
+/* Bottom bar */
+#bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: var(--header-bg);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+#row-count-label { flex: 1; }
+
+/* Dropdown */
+.dropdown-wrap { position: relative; }
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 180px;
+  z-index: 1000;
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.dropdown-menu.open { display: block; }
+.dropdown-item {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dropdown-item:hover { background: #222; }
+.dropdown-item.danger { color: #f87171; }
+
+/* Column header dropdown */
+.col-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 200px;
+  z-index: 200;
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.col-dropdown-item {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.col-dropdown-item:hover { background: #222; }
+.col-dropdown-separator { border-top: 1px solid var(--border); margin: 4px 0; }
+.col-filter-list {
+  padding: 8px 14px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.col-filter-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.col-filter-list label:hover { color: var(--text); }
+.col-filter-list input[type=checkbox] { accent-color: var(--accent); }
+
+/* Column picker panel */
+#col-picker-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 240px;
+  z-index: 200;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  display: none;
+}
+#col-picker-panel.open { display: block; }
+#col-picker-panel h4 { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.col-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #222;
+  cursor: grab;
+  font-size: 13px;
+}
+.col-picker-item:last-child { border-bottom: none; }
+.col-picker-item input[type=checkbox] { accent-color: var(--accent); }
+.col-picker-drag-handle { color: var(--muted); font-size: 16px; cursor: grab; }
+.col-picker-item.dragging { opacity: 0.4; }
+
+/* Overlay / Modal */
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+#overlay.open { display: flex; }
+
+.modal {
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 620px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+.modal-sm { width: 400px; }
+.modal h2 { font-size: 16px; margin-bottom: 16px; }
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 4px 6px;
+}
+.modal-close:hover { color: var(--text); }
+
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; }
+
+.form-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.form-inline label { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+.form-inline input[type=checkbox] { accent-color: var(--accent); }
+
+.radio-group { display: flex; gap: 10px; }
+.radio-group label { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+.radio-group input { accent-color: var(--accent); }
+
+/* Import preview table */
+#import-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 10px;
+  overflow-x: auto;
+  display: block;
+}
+#import-preview th {
+  background: #222;
+  padding: 5px 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+#import-preview td {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-summary {
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.import-summary-item { display: flex; flex-direction: column; gap: 2px; }
+.import-summary-item span:first-child { font-size: 20px; font-weight: 700; }
+.import-summary-item span:last-child { color: var(--muted); font-size: 11px; }
+
+/* Import history panel */
+#history-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border-top: 2px solid var(--accent);
+  z-index: 400;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  padding: 16px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+#history-panel.open { transform: translateY(0); }
+#history-panel h3 { font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+
+#history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+#history-table th {
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+#history-table td { padding: 5px 8px; border-bottom: 1px solid #222; }
+
+/* Empty state */
+#empty-state {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--muted);
+  padding: 40px;
+  text-align: center;
+}
+#empty-state.visible { display: flex; }
+#empty-state .empty-icon { font-size: 48px; }
+#empty-state h2 { font-size: 18px; color: var(--text); }
+#empty-state p { max-width: 340px; }
+#empty-state .btn-primary { font-size: 14px; padding: 10px 20px; margin-top: 4px; }
+
+/* Loading */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 9999;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #333;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tooltip */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* Column width resize handle */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+.resize-handle:hover, .resize-handle.resizing { background: var(--accent); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* New col unknown warning */
+.warning-badge {
+  display: inline-block;
+  background: rgba(234,179,8,0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(234,179,8,0.3);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 1px 5px;
+  margin-left: 4px;
+}
+
+/* Norm badges */
+#norm-badges {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.norm-badge {
+  background: #222;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:13px;">Initialising SQLite…</div>
+</div>
+
+<!-- Main app -->
+<div id="app" style="display:none;">
+
+  <a href="../index.html" id="back-link">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06z"/></svg>
+    Back to Deacyde.com
+  </a>
+
+  <div id="title-bar">
+    <h1>URL Keyword Map</h1>
+    <p>Spreadsheet-style URL management powered by SQLite</p>
+  </div>
+
+  <div id="top-bar">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/></svg>
+      <input type="text" id="search-box" placeholder="Search URLs and keywords…">
+    </div>
+
+    <div id="norm-badges">
+      <span class="norm-badge" id="badge-trim">✓ Trim</span>
+      <span class="norm-badge" id="badge-lower">✓ Lowercase host</span>
+    </div>
+
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <!-- Column picker -->
+      <div class="dropdown-wrap" id="col-picker-wrap">
+        <button class="btn-secondary" id="col-picker-btn" title="Show/hide columns">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-2px;margin-right:4px"><path d="M1 8a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 8Zm0-5.75A.75.75 0 0 1 1.75 1.5h13.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.25Zm0 11.5A.75.75 0 0 1 1.75 13h13.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 13.75Z"/></svg>
+          Columns
+        </button>
+        <div id="col-picker-panel">
+          <h4>Columns <span style="float:right;font-size:11px;cursor:pointer;color:var(--muted)" id="col-picker-close">✕</span></h4>
+          <div id="col-picker-list"></div>
+        </div>
+      </div>
+
+      <!-- Import -->
+      <button class="btn-secondary" id="import-btn">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-2px;margin-right:4px"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.061Z"/></svg>
+        Import
+      </button>
+
+      <!-- Export dropdown -->
+      <div class="dropdown-wrap" id="export-wrap">
+        <button class="btn-secondary" id="export-btn">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-2px;margin-right:4px"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM8.75 8.311V2a.75.75 0 0 0-1.5 0v6.311L5.28 6.341a.749.749 0 1 0-1.06 1.061l3.25 3.25a.749.749 0 0 0 1.06 0l3.25-3.25a.749.749 0 1 0-1.06-1.061Z"/></svg>
+          Export ▾
+        </button>
+        <div class="dropdown-menu" id="export-menu">
+          <div class="dropdown-item" id="export-all-csv">Export All (CSV)</div>
+          <div class="dropdown-item" id="export-filtered-csv">Export Filtered (CSV)</div>
+          <div class="dropdown-item" id="export-db">Export as .db file</div>
+          <div class="dropdown-item" id="import-db-btn" style="border-top:1px solid var(--border);margin-top:4px;padding-top:8px;">Import .db file</div>
+        </div>
+      </div>
+
+      <!-- Add column -->
+      <button class="btn-primary" id="add-col-btn">+ Column</button>
+
+      <!-- Add row -->
+      <button class="btn-primary" id="add-row-btn-top">+ URL</button>
+    </div>
+  </div>
+
+  <div id="filter-chips"></div>
+
+  <!-- Grid -->
+  <div id="grid-wrap">
+    <div id="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <h2>No URLs yet</h2>
+      <p>Import a CSV or add a URL to get started</p>
+      <button class="btn-primary" id="empty-import-btn">Import CSV</button>
+    </div>
+    <table id="grid-table">
+      <thead id="grid-head"></thead>
+      <tbody id="grid-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Bulk action bar -->
+  <div id="bulk-bar">
+    <span id="bulk-label">0 rows selected</span>
+    <span style="color:var(--border)">|</span>
+    <label style="font-size:12px;color:var(--muted)">Set field:</label>
+    <select id="bulk-col-select" style="padding:4px 8px;font-size:12px;"></select>
+    <span style="color:var(--muted)">=</span>
+    <input type="text" id="bulk-value" placeholder="value…" style="width:140px;padding:4px 8px;">
+    <button class="btn-secondary" id="bulk-apply-btn" style="font-size:12px;padding:4px 10px;">Apply</button>
+    <button class="btn-danger" id="bulk-delete-btn" style="font-size:12px;padding:4px 10px;margin-left:8px;">Delete selected</button>
+    <button class="btn-secondary" id="bulk-clear-btn" style="font-size:12px;padding:4px 10px;margin-left:4px;">Clear selection</button>
+  </div>
+
+  <!-- Bottom bar -->
+  <div id="bottom-bar">
+    <span id="row-count-label">0 rows</span>
+    <button class="btn-secondary" style="font-size:11px;padding:3px 8px;" id="history-toggle-btn">📋 Import History</button>
+  </div>
+
+</div>
+
+<!-- Import history panel -->
+<div id="history-panel">
+  <h3>Import History <button class="btn-secondary" style="font-size:11px;padding:2px 8px;" id="history-close-btn">Close</button></h3>
+  <table id="history-table">
+    <thead><tr>
+      <th>Date</th><th>File</th><th>Mode</th><th>Added</th><th>Updated</th><th>Unchanged</th><th>Deleted</th>
+    </tr></thead>
+    <tbody id="history-body"></tbody>
+  </table>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <!-- Import modal -->
+  <div class="modal" id="import-modal" style="display:none;">
+    <h2>Import CSV</h2>
+    <button class="modal-close" data-close="import-modal">✕</button>
+
+    <div class="form-row">
+      <label>CSV File</label>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv">
+    </div>
+
+    <div class="form-row">
+      <label>Import Mode</label>
+      <div class="radio-group">
+        <label><input type="radio" name="import-mode" value="merge" checked> Merge</label>
+        <label><input type="radio" name="import-mode" value="replace_cols"> Replace Columns</label>
+        <label><input type="radio" name="import-mode" value="full_replace"> Full Replace</label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>URL Normalisation</label>
+      <div class="form-inline">
+        <label><input type="checkbox" id="norm-trim" checked> Trim whitespace</label>
+        <label><input type="checkbox" id="norm-lower" checked> Lowercase host</label>
+        <label><input type="checkbox" id="norm-slash"> Remove trailing slash</label>
+      </div>
+    </div>
+
+    <div id="new-cols-section" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;color:#fbbf24;margin-bottom:6px;">⚠ Unknown columns detected — create them?</div>
+      <div id="new-cols-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+
+    <div id="import-preview-wrap" style="display:none;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Preview (first 5 rows)</div>
+      <div style="overflow-x:auto;"><table id="import-preview"></table></div>
+    </div>
+
+    <div id="import-result" style="display:none;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-primary" id="run-import-btn" disabled>Run Import</button>
+      <button class="btn-secondary" data-close="import-modal">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add column modal -->
+  <div class="modal modal-sm" id="add-col-modal" style="display:none;">
+    <h2>Add Column</h2>
+    <button class="modal-close" data-close="add-col-modal">✕</button>
+    <div class="form-row">
+      <label>Label</label>
+      <input type="text" id="new-col-label" placeholder="e.g. Page Title">
+    </div>
+    <div class="form-row">
+      <label>Key <span style="color:var(--muted);font-size:11px;">(auto-generated)</span></label>
+      <input type="text" id="new-col-key" placeholder="page_title">
+    </div>
+    <div class="form-row">
+      <label>Type</label>
+      <select id="new-col-type">
+        <option value="text">Text</option>
+        <option value="number">Number</option>
+        <option value="url">URL</option>
+        <option value="select">Select</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Default Value</label>
+      <input type="text" id="new-col-default" placeholder="(optional)">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-primary" id="save-col-btn">Add Column</button>
+      <button class="btn-secondary" data-close="add-col-modal">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add row / URL modal -->
+  <div class="modal modal-sm" id="add-row-modal" style="display:none;">
+    <h2>Add URL</h2>
+    <button class="modal-close" data-close="add-row-modal">✕</button>
+    <div class="form-row">
+      <label>URL</label>
+      <input type="url" id="new-row-url" placeholder="https://example.com/page">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-primary" id="save-row-btn">Add URL</button>
+      <button class="btn-secondary" data-close="add-row-modal">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Import .db modal -->
+  <div class="modal modal-sm" id="import-db-modal" style="display:none;">
+    <h2>Import .db File</h2>
+    <button class="modal-close" data-close="import-db-modal">✕</button>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">This will replace your current database entirely.</p>
+    <div class="form-row">
+      <label>Database File (.db)</label>
+      <input type="file" id="db-file-input" accept=".db">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-danger" id="load-db-btn">Replace Database</button>
+      <button class="btn-secondary" data-close="import-db-modal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- hidden file input for db import -->
+<input type="file" id="db-file-hidden" accept=".db" style="display:none;">
+
+<script>
+// ═══════════════════════════════════════
+// DB SETUP
+// ═══════════════════════════════════════
+let db, SQL_LIB;
+
+function saveDb() {
+  const data = db.export();
+  try {
+    localStorage.setItem('urlmap_db', btoa(String.fromCharCode(...data)));
+  } catch(e) { console.warn('localStorage save failed', e); }
+}
+
+function dbRun(sql, p = []) {
+  db.run(sql, p);
+  saveDb();
+}
+
+function dbQuery(sql, p = []) {
+  const s = db.prepare(sql);
+  s.bind(p);
+  const rows = [];
+  while (s.step()) rows.push(s.getAsObject());
+  s.free();
+  return rows;
+}
+
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` })
+  .then(SQL => {
+    SQL_LIB = SQL;
+    const saved = localStorage.getItem('urlmap_db');
+    if (saved) {
+      try {
+        db = new SQL.Database(Uint8Array.from(atob(saved), c => c.charCodeAt(0)));
+      } catch(e) {
+        db = new SQL.Database();
+      }
+    } else {
+      db = new SQL.Database();
+    }
+    setupSchema();
+    loadColumns();
+    renderGrid();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  })
+  .catch(e => {
+    document.getElementById('loading').innerHTML = `<div style="color:#f87171">Failed to load SQLite: ${e.message}</div>`;
+  });
+
+function setupSchema() {
+  db.run(`CREATE TABLE IF NOT EXISTS url_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT UNIQUE NOT NULL,
+    data TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS column_defs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    col_type TEXT DEFAULT 'text',
+    position INTEGER DEFAULT 0,
+    visible INTEGER DEFAULT 1,
+    width INTEGER DEFAULT 160
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS import_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_at TEXT DEFAULT (datetime('now')),
+    filename TEXT,
+    added INTEGER DEFAULT 0,
+    updated INTEGER DEFAULT 0,
+    unchanged INTEGER DEFAULT 0,
+    deleted INTEGER DEFAULT 0,
+    mode TEXT DEFAULT 'merge'
+  )`);
+
+  const count = dbQuery('SELECT COUNT(*) as c FROM column_defs')[0].c;
+  if (!count) {
+    const defaults = [
+      { key: 'primary_keyword', label: 'Primary Keyword', position: 0 },
+      { key: 'topic_cluster',   label: 'Topic Cluster',   position: 1 },
+      { key: 'search_intent',   label: 'Search Intent',   position: 2 },
+      { key: 'funnel_stage',    label: 'Funnel Stage',    position: 3 },
+      { key: 'status',          label: 'Status',          position: 4 },
+      { key: 'notes',           label: 'Notes',           position: 5 },
+    ];
+    for (const d of defaults) {
+      db.run('INSERT INTO column_defs (key,label,col_type,position,visible,width) VALUES (?,?,?,?,1,160)',
+        [d.key, d.label, 'text', d.position]);
+    }
+    saveDb();
+  }
+}
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let columns = [];        // column_defs rows
+let allRows = [];        // url_records
+let filteredRows = [];   // after search/filter
+let selectedIds = new Set();
+let sortState = { key: null, dir: 'asc' };
+let filterState = {};    // { key: Set of allowed values }
+let activeColDropdown = null;
+
+function loadColumns() {
+  columns = dbQuery('SELECT * FROM column_defs ORDER BY position ASC');
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function renderGrid() {
+  allRows = dbQuery('SELECT * FROM url_records ORDER BY id ASC');
+  applyFiltersAndSort();
+  renderHead();
+  renderBody();
+  renderFilterChips();
+  renderBulkBar();
+  updateRowCount();
+  renderColPicker();
+  renderBulkColSelect();
+}
+
+function applyFiltersAndSort() {
+  const q = (document.getElementById('search-box')?.value || '').toLowerCase();
+
+  filteredRows = allRows.filter(row => {
+    // filter state
+    for (const [key, allowed] of Object.entries(filterState)) {
+      if (!allowed || !allowed.size) continue;
+      const data = JSON.parse(row.data || '{}');
+      const val = (data[key] || '').toLowerCase();
+      if (!allowed.has(val)) return false;
+    }
+    // search
+    if (!q) return true;
+    const data = JSON.parse(row.data || '{}');
+    if (row.url.toLowerCase().includes(q)) return true;
+    for (const v of Object.values(data)) {
+      if (String(v).toLowerCase().includes(q)) return true;
+    }
+    return false;
+  });
+
+  if (sortState.key) {
+    filteredRows.sort((a, b) => {
+      let av, bv;
+      if (sortState.key === 'url') {
+        av = a.url; bv = b.url;
+      } else {
+        const ad = JSON.parse(a.data || '{}');
+        const bd = JSON.parse(b.data || '{}');
+        av = ad[sortState.key] || '';
+        bv = bd[sortState.key] || '';
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return sortState.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+}
+
+function highlight(text, q) {
+  if (!q) return escHtml(text);
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return escHtml(text);
+  return escHtml(text.slice(0, idx)) +
+    `<mark class="hl">${escHtml(text.slice(idx, idx + q.length))}</mark>` +
+    escHtml(text.slice(idx + q.length));
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderHead() {
+  const head = document.getElementById('grid-head');
+  const visibleCols = columns.filter(c => c.visible);
+  const q = document.getElementById('search-box')?.value || '';
+
+  const sortIcon = (key) => {
+    if (sortState.key !== key) return '';
+    return `<span class="th-sort">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+  };
+
+  let html = `<tr>
+    <th class="col-check">
+      <div class="th-inner" style="justify-content:center;cursor:default;">
+        <input type="checkbox" id="select-all-cb" style="accent-color:var(--accent);">
+      </div>
+    </th>
+    <th class="col-url" style="position:sticky;left:40px;z-index:12;min-width:300px;">
+      <div class="th-inner" data-col-key="url" style="cursor:pointer;">
+        <span class="th-label" data-tip="url">URL</span>
+        ${sortIcon('url')}
+      </div>
+    </th>`;
+
+  for (const col of visibleCols) {
+    html += `<th style="width:${col.width}px;min-width:80px;position:relative;" data-col-key="${escHtml(col.key)}">
+      <div class="th-inner" data-col-key="${escHtml(col.key)}" style="cursor:pointer;">
+        <span class="th-label" data-tip="${escHtml(col.key)}">${escHtml(col.label)}</span>
+        ${sortIcon(col.key)}
+      </div>
+      <div class="resize-handle" data-resize-key="${escHtml(col.key)}"></div>
+    </th>`;
+  }
+
+  html += `<th class="th-add-col" style="width:50px;min-width:50px;">
+    <div class="th-inner" id="th-add-col-btn">
+      <span style="font-size:16px;color:var(--muted);">+</span>
+    </div>
+  </th></tr>`;
+
+  head.innerHTML = html;
+
+  // Select all
+  document.getElementById('select-all-cb').addEventListener('change', e => {
+    if (e.target.checked) {
+      filteredRows.forEach(r => selectedIds.add(r.id));
+    } else {
+      selectedIds.clear();
+    }
+    renderBody();
+    renderBulkBar();
+    updateRowCount();
+  });
+
+  // Col header click
+  head.querySelectorAll('.th-inner[data-col-key]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openColDropdown(el.dataset.colKey, el.closest('th'));
+    });
+  });
+
+  // Add col
+  const addColBtn = document.getElementById('th-add-col-btn');
+  if (addColBtn) addColBtn.addEventListener('click', () => openModal('add-col-modal'));
+
+  // Resize handles
+  head.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', startResize);
+  });
+}
+
+function renderBody() {
+  const body = document.getElementById('grid-body');
+  const visibleCols = columns.filter(c => c.visible);
+  const q = document.getElementById('search-box')?.value || '';
+  const isEmpty = filteredRows.length === 0;
+
+  const emptyState = document.getElementById('empty-state');
+  const gridTable = document.getElementById('grid-table');
+  if (isEmpty && allRows.length === 0) {
+    emptyState.classList.add('visible');
+    gridTable.style.display = 'none';
+    body.innerHTML = '';
+    return;
+  } else {
+    emptyState.classList.remove('visible');
+    gridTable.style.display = '';
+  }
+
+  let html = '';
+  for (const row of filteredRows) {
+    const data = JSON.parse(row.data || '{}');
+    const sel = selectedIds.has(row.id);
+    const selClass = sel ? ' selected' : '';
+
+    // Domain favicon
+    let domain = '';
+    try { domain = new URL(row.url).hostname; } catch(e) {}
+
+    html += `<tr class="data-row${selClass}" data-id="${row.id}">
+      <td class="col-check">
+        <div class="cell-inner" style="justify-content:center;cursor:default;">
+          <input type="checkbox" class="row-cb" data-id="${row.id}" ${sel ? 'checked' : ''} style="accent-color:var(--accent);">
+        </div>
+      </td>
+      <td class="col-url" data-id="${row.id}">
+        <div class="cell-inner url-cell">
+          ${domain ? `<img class="favicon" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}" onerror="this.style.display='none'" alt="">` : ''}
+          <a href="${escHtml(row.url)}" target="_blank" rel="noopener" class="url-link" title="${escHtml(row.url)}">${highlight(row.url, q)}</a>
+        </div>
+      </td>`;
+
+    for (const col of visibleCols) {
+      const val = data[col.key] || '';
+      html += `<td data-id="${row.id}" data-key="${escHtml(col.key)}" data-type="${col.col_type}">
+        <div class="cell-inner">${highlight(val, q)}</div>
+      </td>`;
+    }
+
+    html += `<td></td></tr>`;
+  }
+
+  // Add row button
+  html += `<tr id="add-row-tr"><td colspan="${visibleCols.length + 3}">
+    <button id="add-row-inline-btn" class="btn-secondary" style="width:100%;text-align:left;background:none;border:none;color:var(--muted);font-size:12px;padding:8px 16px;border-radius:0;">
+      + Add URL
+    </button>
+  </td></tr>`;
+
+  body.innerHTML = html;
+
+  // Row checkboxes
+  body.querySelectorAll('.row-cb').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const id = parseInt(e.target.dataset.id);
+      if (e.target.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      const tr = e.target.closest('tr');
+      tr.classList.toggle('selected', e.target.checked);
+      renderBulkBar();
+      updateRowCount();
+    });
+  });
+
+  // Cell click → edit
+  body.querySelectorAll('td[data-key]').forEach(td => {
+    td.querySelector('.cell-inner').addEventListener('click', () => startEdit(td));
+  });
+
+  // Inline add row
+  const inlineBtn = document.getElementById('add-row-inline-btn');
+  if (inlineBtn) inlineBtn.addEventListener('click', () => openModal('add-row-modal'));
+}
+
+function startEdit(td) {
+  // Cancel any other edit
+  document.querySelectorAll('td.editing').forEach(e => cancelEdit(e));
+
+  const id = parseInt(td.dataset.id);
+  const key = td.dataset.key;
+  const type = td.dataset.type || 'text';
+  const row = allRows.find(r => r.id === id);
+  const data = JSON.parse(row?.data || '{}');
+  const currentVal = data[key] || '';
+
+  td.classList.add('editing');
+  const inner = td.querySelector('.cell-inner');
+
+  const isNotes = key === 'notes' || type === 'textarea';
+  const tag = isNotes ? 'textarea' : 'input';
+  const inputType = type === 'number' ? 'number' : type === 'url' ? 'url' : 'text';
+
+  inner.innerHTML = isNotes
+    ? `<textarea class="cell-input" style="height:80px;resize:vertical;">${escHtml(currentVal)}</textarea>`
+    : `<input type="${inputType}" class="cell-input" value="${escHtml(currentVal)}">`;
+
+  const inp = inner.querySelector(tag);
+  inp.focus();
+  inp.select();
+
+  const save = () => {
+    const newVal = inp.value;
+    saveCell(id, key, newVal, td);
+  };
+
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !isNotes) { e.preventDefault(); save(); }
+    if (e.key === 'Tab') { e.preventDefault(); save(); moveEditRight(td); }
+    if (e.key === 'Escape') { cancelEdit(td); }
+  });
+  inp.addEventListener('blur', save);
+}
+
+function cancelEdit(td) {
+  td.classList.remove('editing');
+  const id = parseInt(td.dataset.id);
+  const key = td.dataset.key;
+  const row = allRows.find(r => r.id === id);
+  const data = JSON.parse(row?.data || '{}');
+  td.querySelector('.cell-inner').textContent = data[key] || '';
+}
+
+function saveCell(id, key, value, td) {
+  if (!db) return;
+  const row = allRows.find(r => r.id === id);
+  if (!row) return;
+  const data = JSON.parse(row.data || '{}');
+  if (data[key] === value) {
+    td.classList.remove('editing');
+    td.querySelector('.cell-inner').textContent = value;
+    return;
+  }
+  data[key] = value;
+  row.data = JSON.stringify(data);
+  dbRun('UPDATE url_records SET data=?, updated_at=datetime("now") WHERE id=?', [JSON.stringify(data), id]);
+  td.classList.remove('editing');
+  const inner = td.querySelector('.cell-inner');
+  inner.textContent = value;
+  inner.classList.add('cell-flash');
+  setTimeout(() => inner.classList.remove('cell-flash'), 700);
+}
+
+function moveEditRight(td) {
+  const allTds = Array.from(document.querySelectorAll('td[data-key]'));
+  const idx = allTds.indexOf(td);
+  if (idx !== -1 && idx + 1 < allTds.length) startEdit(allTds[idx + 1]);
+}
+
+// ═══════════════════════════════════════
+// COLUMN HEADER DROPDOWN
+// ═══════════════════════════════════════
+function openColDropdown(colKey, thEl) {
+  // Close existing
+  if (activeColDropdown) { activeColDropdown.remove(); activeColDropdown = null; }
+
+  const uniqueVals = getUniqueVals(colKey);
+  const isUrl = colKey === 'url';
+
+  const div = document.createElement('div');
+  div.className = 'col-dropdown';
+  div.innerHTML = `
+    ${!isUrl ? `
+    <div class="col-dropdown-item" data-action="sort-asc">Sort A → Z</div>
+    <div class="col-dropdown-item" data-action="sort-desc">Sort Z → A</div>
+    <div class="col-dropdown-item" data-action="clear-sort">Clear Sort</div>
+    <div class="col-dropdown-separator"></div>
+    <div style="padding:4px 14px 2px;font-size:11px;color:var(--muted);">Filter by value</div>
+    <div class="col-filter-list">
+      ${uniqueVals.map(v => `
+        <label>
+          <input type="checkbox" value="${escHtml(v)}" ${isValAllowed(colKey, v) ? 'checked' : ''}>
+          ${v ? escHtml(v) : '<em style="color:var(--muted)">(empty)</em>'}
+        </label>`).join('')}
+    </div>
+    <div class="col-dropdown-separator"></div>
+    <div class="col-dropdown-item" data-action="clear-filter">Clear Filter</div>
+    ` : `
+    <div class="col-dropdown-item" data-action="sort-asc">Sort A → Z</div>
+    <div class="col-dropdown-item" data-action="sort-desc">Sort Z → A</div>
+    <div class="col-dropdown-item" data-action="clear-sort">Clear Sort</div>
+    `}
+    ${!isUrl ? `<div class="col-dropdown-item" data-action="hide-col" style="color:var(--muted);">Hide Column</div>` : ''}
+  `;
+
+  thEl.style.position = 'relative';
+  thEl.appendChild(div);
+  activeColDropdown = div;
+
+  div.querySelectorAll('[data-action]').forEach(el => {
+    el.addEventListener('click', e => {
+      const action = el.dataset.action;
+      if (action === 'sort-asc') { sortState = { key: colKey, dir: 'asc' }; }
+      else if (action === 'sort-desc') { sortState = { key: colKey, dir: 'desc' }; }
+      else if (action === 'clear-sort') { sortState = { key: null, dir: 'asc' }; }
+      else if (action === 'clear-filter') { delete filterState[colKey]; }
+      else if (action === 'hide-col') {
+        const col = columns.find(c => c.key === colKey);
+        if (col) { dbRun('UPDATE column_defs SET visible=0 WHERE key=?', [colKey]); loadColumns(); }
+      }
+      closeColDropdown();
+      renderGrid();
+    });
+  });
+
+  // Filter checkboxes
+  div.querySelectorAll('.col-filter-list input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checked = Array.from(div.querySelectorAll('.col-filter-list input:checked')).map(c => c.value);
+      if (checked.length) filterState[colKey] = new Set(checked);
+      else delete filterState[colKey];
+      applyFiltersAndSort();
+      renderBody();
+      renderFilterChips();
+      updateRowCount();
+    });
+  });
+
+  setTimeout(() => document.addEventListener('click', closeColDropdownOutside), 50);
+}
+
+function closeColDropdownOutside(e) {
+  if (activeColDropdown && !activeColDropdown.contains(e.target)) closeColDropdown();
+}
+function closeColDropdown() {
+  if (activeColDropdown) { activeColDropdown.remove(); activeColDropdown = null; }
+  document.removeEventListener('click', closeColDropdownOutside);
+}
+
+function getUniqueVals(key) {
+  const vals = new Set();
+  for (const row of allRows) {
+    if (key === 'url') { vals.add(row.url); continue; }
+    const d = JSON.parse(row.data || '{}');
+    vals.add((d[key] || '').toLowerCase());
+  }
+  return Array.from(vals).sort();
+}
+
+function isValAllowed(key, val) {
+  if (!filterState[key]) return true;
+  return filterState[key].has(val);
+}
+
+// ═══════════════════════════════════════
+// FILTER CHIPS
+// ═══════════════════════════════════════
+function renderFilterChips() {
+  const container = document.getElementById('filter-chips');
+  const col = columns.find(c => c.key === sortState.key);
+  let html = '';
+  if (sortState.key) {
+    html += `<span class="chip">Sort: ${col ? col.label : sortState.key} ${sortState.dir === 'asc' ? '▲' : '▼'}
+      <button data-remove-sort="1">✕</button></span>`;
+  }
+  for (const [key, vals] of Object.entries(filterState)) {
+    if (!vals || !vals.size) continue;
+    const colDef = columns.find(c => c.key === key);
+    const label = colDef ? colDef.label : key;
+    html += `<span class="chip">${escHtml(label)}: ${Array.from(vals).map(escHtml).join(', ')}
+      <button data-remove-filter="${escHtml(key)}">✕</button></span>`;
+  }
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-remove-sort]').forEach(btn => {
+    btn.addEventListener('click', () => { sortState = { key: null, dir: 'asc' }; renderGrid(); });
+  });
+  container.querySelectorAll('[data-remove-filter]').forEach(btn => {
+    btn.addEventListener('click', () => { delete filterState[btn.dataset.removeFilter]; renderGrid(); });
+  });
+}
+
+// ═══════════════════════════════════════
+// BULK BAR
+// ═══════════════════════════════════════
+function renderBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const label = document.getElementById('bulk-label');
+  const n = selectedIds.size;
+  if (n > 0) {
+    bar.classList.add('visible');
+    label.textContent = `${n} row${n !== 1 ? 's' : ''} selected`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function renderBulkColSelect() {
+  const sel = document.getElementById('bulk-col-select');
+  sel.innerHTML = columns.map(c => `<option value="${escHtml(c.key)}">${escHtml(c.label)}</option>`).join('');
+}
+
+function updateRowCount() {
+  const total = filteredRows.length;
+  const sel = selectedIds.size;
+  let txt = `${allRows.length} row${allRows.length !== 1 ? 's' : ''}`;
+  if (total !== allRows.length) txt += ` · ${total} filtered`;
+  if (sel) txt += ` · ${sel} selected`;
+  document.getElementById('row-count-label').textContent = txt;
+}
+
+// ═══════════════════════════════════════
+// COLUMN PICKER
+// ═══════════════════════════════════════
+function renderColPicker() {
+  const list = document.getElementById('col-picker-list');
+  list.innerHTML = columns.map((col, i) => `
+    <div class="col-picker-item" draggable="true" data-key="${escHtml(col.key)}" data-idx="${i}">
+      <span class="col-picker-drag-handle">⠿</span>
+      <input type="checkbox" ${col.visible ? 'checked' : ''} data-key="${escHtml(col.key)}" class="col-vis-cb" style="accent-color:var(--accent);">
+      <span>${escHtml(col.label)}</span>
+    </div>`).join('');
+
+  list.querySelectorAll('.col-vis-cb').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const key = e.target.dataset.key;
+      const vis = e.target.checked ? 1 : 0;
+      dbRun('UPDATE column_defs SET visible=? WHERE key=?', [vis, key]);
+      loadColumns();
+      renderGrid();
+    });
+  });
+
+  // Drag to reorder
+  let dragSrc = null;
+  list.querySelectorAll('.col-picker-item').forEach(item => {
+    item.addEventListener('dragstart', e => { dragSrc = item; item.classList.add('dragging'); });
+    item.addEventListener('dragend', () => { item.classList.remove('dragging'); dragSrc = null; });
+    item.addEventListener('dragover', e => { e.preventDefault(); });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === item) return;
+      const srcKey = dragSrc.dataset.key;
+      const dstKey = item.dataset.key;
+      reorderColumns(srcKey, dstKey);
+    });
+  });
+}
+
+function reorderColumns(srcKey, dstKey) {
+  const srcIdx = columns.findIndex(c => c.key === srcKey);
+  const dstIdx = columns.findIndex(c => c.key === dstKey);
+  if (srcIdx === -1 || dstIdx === -1) return;
+  const reordered = [...columns];
+  const [moved] = reordered.splice(srcIdx, 1);
+  reordered.splice(dstIdx, 0, moved);
+  reordered.forEach((col, i) => {
+    dbRun('UPDATE column_defs SET position=? WHERE key=?', [i, col.key]);
+  });
+  loadColumns();
+  renderGrid();
+}
+
+// ═══════════════════════════════════════
+// COLUMN RESIZE
+// ═══════════════════════════════════════
+let resizeState = null;
+function startResize(e) {
+  const key = e.target.dataset.resizeKey;
+  const th = e.target.closest('th');
+  resizeState = { key, startX: e.clientX, startW: th.offsetWidth };
+  document.addEventListener('mousemove', doResize);
+  document.addEventListener('mouseup', endResize);
+  e.preventDefault();
+}
+function doResize(e) {
+  if (!resizeState) return;
+  const delta = e.clientX - resizeState.startX;
+  const newW = Math.max(60, resizeState.startW + delta);
+  const th = document.querySelector(`th[data-col-key="${resizeState.key}"]`);
+  if (th) th.style.width = newW + 'px';
+}
+function endResize(e) {
+  if (!resizeState) return;
+  const delta = e.clientX - resizeState.startX;
+  const newW = Math.max(60, resizeState.startW + delta);
+  dbRun('UPDATE column_defs SET width=? WHERE key=?', [newW, resizeState.key]);
+  loadColumns();
+  resizeState = null;
+  document.removeEventListener('mousemove', doResize);
+  document.removeEventListener('mouseup', endResize);
+}
+
+// ═══════════════════════════════════════
+// ADD / DELETE ROWS
+// ═══════════════════════════════════════
+document.getElementById('add-row-btn-top').addEventListener('click', () => openModal('add-row-modal'));
+document.getElementById('empty-import-btn').addEventListener('click', () => openModal('import-modal'));
+
+document.getElementById('save-row-btn').addEventListener('click', () => {
+  const url = document.getElementById('new-row-url').value.trim();
+  if (!url) return alert('Please enter a URL');
+  try {
+    dbRun('INSERT INTO url_records (url, data) VALUES (?,?)', [url, '{}']);
+    closeModal('add-row-modal');
+    document.getElementById('new-row-url').value = '';
+    renderGrid();
+  } catch(e) {
+    alert('URL already exists or is invalid: ' + e.message);
+  }
+});
+
+document.getElementById('new-row-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('save-row-btn').click();
+});
+
+// Bulk delete
+document.getElementById('bulk-delete-btn').addEventListener('click', () => {
+  if (!selectedIds.size) return;
+  if (!confirm(`Delete ${selectedIds.size} row(s)? This cannot be undone.`)) return;
+  for (const id of selectedIds) dbRun('DELETE FROM url_records WHERE id=?', [id]);
+  selectedIds.clear();
+  renderGrid();
+});
+
+// Bulk apply
+document.getElementById('bulk-apply-btn').addEventListener('click', () => {
+  const key = document.getElementById('bulk-col-select').value;
+  const val = document.getElementById('bulk-value').value;
+  for (const id of selectedIds) {
+    const row = allRows.find(r => r.id === id);
+    if (!row) continue;
+    const data = JSON.parse(row.data || '{}');
+    data[key] = val;
+    dbRun('UPDATE url_records SET data=?, updated_at=datetime("now") WHERE id=?', [JSON.stringify(data), id]);
+  }
+  renderGrid();
+});
+
+document.getElementById('bulk-clear-btn').addEventListener('click', () => {
+  selectedIds.clear();
+  renderBody();
+  renderBulkBar();
+  updateRowCount();
+});
+
+// ═══════════════════════════════════════
+// ADD COLUMN
+// ═══════════════════════════════════════
+document.getElementById('add-col-btn').addEventListener('click', () => openModal('add-col-modal'));
+
+document.getElementById('new-col-label').addEventListener('input', e => {
+  document.getElementById('new-col-key').value = slugify(e.target.value);
+});
+
+document.getElementById('save-col-btn').addEventListener('click', () => {
+  const label = document.getElementById('new-col-label').value.trim();
+  const key = document.getElementById('new-col-key').value.trim();
+  const colType = document.getElementById('new-col-type').value;
+  if (!label || !key) return alert('Label and key are required');
+  const pos = columns.length;
+  try {
+    dbRun('INSERT INTO column_defs (key,label,col_type,position,visible,width) VALUES (?,?,?,?,1,160)', [key, label, colType, pos]);
+    loadColumns();
+    closeModal('add-col-modal');
+    document.getElementById('new-col-label').value = '';
+    document.getElementById('new-col-key').value = '';
+    renderGrid();
+  } catch(e) {
+    alert('Column key already exists: ' + e.message);
+  }
+});
+
+// ═══════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════
+document.getElementById('search-box').addEventListener('input', () => {
+  applyFiltersAndSort();
+  renderBody();
+  renderFilterChips();
+  updateRowCount();
+});
+
+// ═══════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════
+document.getElementById('export-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('export-menu').classList.toggle('open');
+});
+
+document.getElementById('export-all-csv').addEventListener('click', () => {
+  exportCSV(allRows);
+  document.getElementById('export-menu').classList.remove('open');
+});
+document.getElementById('export-filtered-csv').addEventListener('click', () => {
+  exportCSV(filteredRows);
+  document.getElementById('export-menu').classList.remove('open');
+});
+document.getElementById('export-db').addEventListener('click', () => {
+  const data = db.export();
+  const blob = new Blob([data], { type: 'application/octet-stream' });
+  downloadBlob(blob, 'url-map.db');
+  document.getElementById('export-menu').classList.remove('open');
+});
+document.getElementById('import-db-btn').addEventListener('click', () => {
+  document.getElementById('export-menu').classList.remove('open');
+  openModal('import-db-modal');
+});
+
+function exportCSV(rows) {
+  const cols = columns.filter(c => c.visible);
+  const headers = ['url', ...cols.map(c => c.key)];
+  const lines = [headers.join(',')];
+  for (const row of rows) {
+    const data = JSON.parse(row.data || '{}');
+    const vals = [row.url, ...cols.map(c => data[c.key] || '')];
+    lines.push(vals.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  }
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+  downloadBlob(blob, 'url-map-export.csv');
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// Import .db
+document.getElementById('load-db-btn').addEventListener('click', () => {
+  const file = document.getElementById('db-file-input').files[0];
+  if (!file) return alert('Please select a .db file');
+  const reader = new FileReader();
+  reader.onload = e => {
+    db = new SQL_LIB.Database(new Uint8Array(e.target.result));
+    saveDb();
+    loadColumns();
+    selectedIds.clear();
+    filterState = {};
+    sortState = { key: null, dir: 'asc' };
+    closeModal('import-db-modal');
+    renderGrid();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// ═══════════════════════════════════════
+// CSV IMPORT
+// ═══════════════════════════════════════
+document.getElementById('import-btn').addEventListener('click', () => {
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-preview-wrap').style.display = 'none';
+  document.getElementById('new-cols-section').style.display = 'none';
+  document.getElementById('run-import-btn').disabled = true;
+  openModal('import-modal');
+});
+
+let parsedCSVRows = null;
+let csvHeaderMap = [];
+
+document.getElementById('csv-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    parsedCSVRows = parseCSV(ev.target.result);
+    if (!parsedCSVRows || parsedCSVRows.length < 2) {
+      alert('CSV appears empty or invalid');
+      return;
+    }
+    buildHeaderMap(parsedCSVRows[0]);
+    showImportPreview(parsedCSVRows);
+    document.getElementById('run-import-btn').disabled = false;
+  };
+  reader.readAsText(file);
+});
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    rows.push(parseCSVLine(line));
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const fields = [];
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] === '"') {
+      let field = '';
+      i++;
+      while (i < line.length) {
+        if (line[i] === '"' && line[i+1] === '"') { field += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
+        else { field += line[i]; i++; }
+      }
+      fields.push(field);
+      if (line[i] === ',') i++;
+    } else {
+      let start = i;
+      while (i < line.length && line[i] !== ',') i++;
+      fields.push(line.slice(start, i));
+      if (line[i] === ',') i++;
+    }
+  }
+  return fields;
+}
+
+function buildHeaderMap(headerRow) {
+  csvHeaderMap = [];
+  const newCols = [];
+
+  for (let i = 0; i < headerRow.length; i++) {
+    const h = headerRow[i].trim();
+    const slug = slugify(h);
+    // Try exact key match, then label match, then slug
+    let col = columns.find(c => c.key === h) ||
+              columns.find(c => c.label.toLowerCase() === h.toLowerCase()) ||
+              columns.find(c => c.key === slug);
+
+    if (h.toLowerCase() === 'url' || h.toLowerCase() === 'address') {
+      csvHeaderMap.push({ csvIdx: i, colKey: '__url__', label: h });
+    } else if (col) {
+      csvHeaderMap.push({ csvIdx: i, colKey: col.key, label: h });
+    } else {
+      csvHeaderMap.push({ csvIdx: i, colKey: slug, label: h, isNew: true });
+      if (!newCols.find(nc => nc.key === slug)) {
+        newCols.push({ key: slug, label: h });
+      }
+    }
+  }
+
+  const newColsSection = document.getElementById('new-cols-section');
+  const newColsList = document.getElementById('new-cols-list');
+  if (newCols.length) {
+    newColsSection.style.display = 'block';
+    newColsList.innerHTML = newCols.map(nc =>
+      `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" class="new-col-cb" data-key="${escHtml(nc.key)}" data-label="${escHtml(nc.label)}" checked style="accent-color:var(--accent);">
+        Create column "<strong>${escHtml(nc.label)}</strong>" (key: <code style="color:var(--accent-light)">${escHtml(nc.key)}</code>)
+      </label>`
+    ).join('');
+  } else {
+    newColsSection.style.display = 'none';
+  }
+}
+
+function showImportPreview(rows) {
+  const headers = rows[0];
+  const preview = rows.slice(1, 6);
+  let html = '<tr>' + headers.map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
+  for (const row of preview) {
+    html += '<tr>' + row.map(cell => `<td>${escHtml(cell)}</td>`).join('') + '</tr>';
+  }
+  document.getElementById('import-preview').innerHTML = html;
+  document.getElementById('import-preview-wrap').style.display = 'block';
+}
+
+function normalizeURL(url, opts) {
+  url = url.trim();
+  if (!url) return '';
+  if (opts.lowercaseHost) {
+    try {
+      const u = new URL(url);
+      url = url.replace(u.host, u.host.toLowerCase());
+    } catch(e) { url = url.toLowerCase(); }
+  }
+  if (opts.removeTrailingSlash) url = url.replace(/\/$/, '');
+  return url;
+}
+
+document.getElementById('run-import-btn').addEventListener('click', () => {
+  if (!parsedCSVRows) return;
+
+  const mode = document.querySelector('input[name="import-mode"]:checked').value;
+  const normOpts = {
+    trim: document.getElementById('norm-trim').checked,
+    lowercaseHost: document.getElementById('norm-lower').checked,
+    removeTrailingSlash: document.getElementById('norm-slash').checked,
+  };
+
+  // Create new columns if checked
+  document.querySelectorAll('.new-col-cb:checked').forEach(cb => {
+    const key = cb.dataset.key;
+    const label = cb.dataset.label;
+    if (!columns.find(c => c.key === key)) {
+      const pos = columns.length;
+      try {
+        db.run('INSERT INTO column_defs (key,label,col_type,position,visible,width) VALUES (?,?,?,?,1,160)',
+          [key, label, 'text', pos]);
+      } catch(e) {}
+    }
+  });
+  saveDb();
+  loadColumns();
+
+  const filename = document.getElementById('csv-file-input').files[0]?.name || 'unknown.csv';
+  const result = runImport(parsedCSVRows, mode, normOpts, filename);
+
+  // Show result
+  const resultEl = document.getElementById('import-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <div class="import-summary">
+      <div class="import-summary-item"><span style="color:#4ade80;">${result.added}</span><span>Added</span></div>
+      <div class="import-summary-item"><span style="color:#60a5fa;">${result.updated}</span><span>Updated</span></div>
+      <div class="import-summary-item"><span style="color:var(--muted);">${result.unchanged}</span><span>Unchanged</span></div>
+      ${result.deleted > 0 ? `<div class="import-summary-item"><span style="color:#f87171;">${result.deleted}</span><span>Deleted</span></div>` : ''}
+    </div>`;
+
+  renderGrid();
+});
+
+function runImport(rows, mode, normOpts, filename) {
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+
+  // Find URL column index
+  let urlColIndex = csvHeaderMap.findIndex(m => m.colKey === '__url__');
+  if (urlColIndex === -1) {
+    // fallback: first column
+    urlColIndex = 0;
+    csvHeaderMap[0] = { ...csvHeaderMap[0], colKey: '__url__' };
+  }
+
+  let added = 0, updated = 0, unchanged = 0, deleted = 0;
+  const importedUrls = new Set();
+
+  for (const row of dataRows) {
+    const rawUrl = row[urlColIndex] || '';
+    if (!rawUrl.trim()) continue;
+    const url = normalizeURL(rawUrl, normOpts);
+    if (!url) continue;
+    importedUrls.add(url);
+
+    const newData = {};
+    for (const mapping of csvHeaderMap) {
+      if (mapping.colKey === '__url__') continue;
+      const val = row[mapping.csvIdx] !== undefined ? row[mapping.csvIdx] : '';
+      if (val !== '') newData[mapping.colKey] = val;
+    }
+
+    const existing = dbQuery('SELECT id, data FROM url_records WHERE url=?', [url])[0];
+
+    if (!existing) {
+      try {
+        db.run('INSERT INTO url_records (url, data) VALUES (?,?)', [url, JSON.stringify(newData)]);
+        added++;
+      } catch(e) {}
+    } else {
+      const oldData = JSON.parse(existing.data || '{}');
+      let merged = { ...oldData };
+
+      if (mode === 'merge') {
+        for (const [k, v] of Object.entries(newData)) {
+          if (v !== '') merged[k] = v;
+        }
+      } else if (mode === 'replace_cols') {
+        for (const mapping of csvHeaderMap) {
+          if (mapping.colKey === '__url__') continue;
+          merged[mapping.colKey] = row[mapping.csvIdx] || '';
+        }
+      } else if (mode === 'full_replace') {
+        merged = newData;
+      }
+
+      if (JSON.stringify(merged) === JSON.stringify(oldData)) {
+        unchanged++;
+      } else {
+        db.run('UPDATE url_records SET data=?, updated_at=datetime("now") WHERE id=?',
+          [JSON.stringify(merged), existing.id]);
+        updated++;
+      }
+    }
+  }
+
+  if (mode === 'full_replace') {
+    const existing = dbQuery('SELECT id, url FROM url_records');
+    for (const row of existing) {
+      if (!importedUrls.has(row.url)) {
+        db.run('DELETE FROM url_records WHERE id=?', [row.id]);
+        deleted++;
+      }
+    }
+  }
+
+  saveDb();
+
+  try {
+    db.run('INSERT INTO import_log (filename, added, updated, unchanged, deleted, mode) VALUES (?,?,?,?,?,?)',
+      [filename, added, updated, unchanged, deleted, mode]);
+    saveDb();
+  } catch(e) {}
+
+  return { added, updated, unchanged, deleted };
+}
+
+// ═══════════════════════════════════════
+// IMPORT HISTORY
+// ═══════════════════════════════════════
+document.getElementById('history-toggle-btn').addEventListener('click', () => {
+  const panel = document.getElementById('history-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) renderHistory();
+});
+document.getElementById('history-close-btn').addEventListener('click', () => {
+  document.getElementById('history-panel').classList.remove('open');
+});
+
+function renderHistory() {
+  const logs = dbQuery('SELECT * FROM import_log ORDER BY id DESC LIMIT 10');
+  const body = document.getElementById('history-body');
+  if (!logs.length) { body.innerHTML = '<tr><td colspan="7" style="color:var(--muted);padding:10px">No imports yet</td></tr>'; return; }
+  body.innerHTML = logs.map(l => `<tr>
+    <td>${l.run_at || ''}</td>
+    <td>${escHtml(l.filename || '')}</td>
+    <td><span style="background:#222;padding:1px 6px;border-radius:4px;font-size:11px;">${escHtml(l.mode || '')}</span></td>
+    <td style="color:#4ade80">${l.added}</td>
+    <td style="color:#60a5fa">${l.updated}</td>
+    <td style="color:var(--muted)">${l.unchanged}</td>
+    <td style="color:#f87171">${l.deleted}</td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════
+// COLUMN PICKER PANEL TOGGLE
+// ═══════════════════════════════════════
+document.getElementById('col-picker-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('col-picker-panel').classList.toggle('open');
+});
+document.getElementById('col-picker-close').addEventListener('click', () => {
+  document.getElementById('col-picker-panel').classList.remove('open');
+});
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('col-picker-wrap');
+  if (!wrap.contains(e.target)) document.getElementById('col-picker-panel').classList.remove('open');
+});
+
+// Close export menu on outside click
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('export-wrap');
+  if (!wrap.contains(e.target)) document.getElementById('export-menu').classList.remove('open');
+});
+
+// ═══════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════
+function openModal(id) {
+  document.getElementById('overlay').classList.add('open');
+  document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+}
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) {
+    document.querySelectorAll('.modal').forEach(m => {
+      if (m.style.display !== 'none') closeModal(m.id);
+    });
+  }
+});
+
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+
+// ═══════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedIds.size > 0) {
+      if (confirm(`Delete ${selectedIds.size} row(s)?`)) {
+        for (const id of selectedIds) dbRun('DELETE FROM url_records WHERE id=?', [id]);
+        selectedIds.clear();
+        renderGrid();
+      }
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    showToast('Undo not yet supported');
+  }
+  if (e.key === 'Escape') {
+    document.querySelectorAll('td.editing').forEach(td => cancelEdit(td));
+    closeColDropdown();
+  }
+});
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#222;border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function slugify(s) {
+  return s.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60);
+}
+</script>
+</body>
+</html>
