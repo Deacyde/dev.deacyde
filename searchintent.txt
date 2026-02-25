@@ -1,146 +1,301 @@
-Delete after app is created
-
-# Prompt: Build a Keyword Intent & Journey Analyzer Web App
+# Prompt: Build a Keyword Intent & Journey Analyzer Web App (No API — Client-Side Only)
 
 ## Context
 
 I want to build a web application hosted on **dev.deacyde.com** that lets a user enter a keyword or phrase and instantly returns:
 
 1. **Search Intent Classification** — Informational, Navigational, Commercial Investigation, or Transactional
-2. **Buyer Journey Stage** — Unaware, Problem Aware, Solution Aware, Product Aware, or Most Aware (using Eugene Schwartz's awareness stages)
-3. **Keyword Cluster Suggestion** — A thematic cluster the keyword likely belongs to (e.g., "ERP implementation," "financial close automation," "data connectivity")
+2. **Buyer Journey Stage** — Unaware, Problem Aware, Solution Aware, Product Aware, or Most Aware (Eugene Schwartz's awareness stages)
+3. **Keyword Cluster Suggestion** — A thematic cluster the keyword likely belongs to
+4. **Content Format Recommendation** — What type of content best serves this keyword
 
-The app should be a single-page web application with a modern, clean UI.
+**IMPORTANT: This must be 100% client-side. No API calls, no backend, no API keys.** All classification logic runs in the browser using a rules-based engine with keyword pattern matching, signal word libraries, and weighted scoring.
 
 ---
 
-## Functional Requirements
+## Classification Engine Design
 
-### Core Feature
-- A single input field where the user types a keyword or phrase and hits Enter or clicks "Analyze"
-- On submission, the app calls the **Anthropic Claude API** (`claude-sonnet-4-5-20250929`) to classify the keyword
-- Results are displayed in a card-based layout below the input
+### How It Works (NO LLM — Pure Logic)
 
-### Result Cards (display after analysis)
-1. **Search Intent** — Show the intent type with a color-coded badge and a 1-2 sentence explanation of *why* it was classified that way
-2. **Buyer Journey Stage** — Show the stage name, a visual indicator of where it falls on the journey spectrum (like a progress bar or stepper), and a brief rationale
-3. **Keyword Cluster** — Show a suggested cluster name, 3-5 related keywords that would belong in the same cluster, and a brief description of the cluster theme
-4. **Content Recommendation** — A bonus section suggesting what type of content would best serve this keyword (e.g., "comparison guide," "how-to tutorial," "product landing page," "case study")
+Build a JavaScript classification engine that scores keywords against signal word dictionaries and pattern rules. Each classifier should use **weighted scoring** — a keyword can match multiple signals, and the highest-scoring category wins.
+
+### 1. Search Intent Classifier
+
+Use these signal word dictionaries and patterns:
+
+```javascript
+const intentSignals = {
+  informational: {
+    strong: ["what is", "what are", "how to", "how do", "how does", "why do", "why does", "why is", "guide to", "tutorial", "learn", "examples of", "explain", "definition", "meaning of", "difference between", "types of", "ways to", "steps to", "introduction to", "overview of", "basics of", "fundamentals"],
+    moderate: ["tips", "tricks", "ideas", "strategies", "methods", "techniques", "practices", "principles", "concepts", "resources", "checklist", "template", "framework", "process", "workflow"],
+    weak: ["can you", "should i", "is it", "do i need", "when to", "where to"]
+  },
+  navigational: {
+    strong: ["login", "log in", "sign in", "signin", "portal", "dashboard", "account", "homepage", "official site", "website", "app", "download app", "contact"],
+    moderate: ["[brand names]", "support", "help center", "documentation", "docs", "status page"],
+    weak: ["go to", "find", "where is", "access"]
+  },
+  commercial_investigation: {
+    strong: ["best", "top", "vs", "versus", "compared to", "comparison", "review", "reviews", "alternative", "alternatives to", "competitor", "pros and cons", "advantages", "disadvantages"],
+    moderate: ["which", "recommend", "suggestion", "evaluation", "analysis", "benchmark", "rated", "ranking", "most popular", "leading", "enterprise"],
+    weak: ["good", "better", "worth it", "reliable", "trusted", "features"]
+  },
+  transactional: {
+    strong: ["buy", "purchase", "pricing", "price", "cost", "plans", "subscribe", "order", "book", "schedule demo", "free trial", "get started", "sign up", "signup", "register", "coupon", "discount", "deal", "quote", "request demo"],
+    moderate: ["hire", "agency", "service", "consultant", "freelancer", "implementation", "onboarding", "setup", "install", "deploy", "license", "subscription"],
+    weak: ["near me", "open now", "available", "in stock", "shipping", "delivery"]
+  }
+};
+// Scoring: strong match = 3 points, moderate = 2, weak = 1
+// Highest total score wins. Ties broken by: Transactional > Commercial > Informational > Navigational
+```
+
+### 2. Buyer Journey Stage Classifier
+
+Map based on the intent classification PLUS additional contextual signals:
+
+```javascript
+const journeySignals = {
+  unaware: {
+    // Broad, curiosity-driven, no problem framing
+    signals: ["what is", "what are", "meaning of", "definition", "explain", "introduction to", "basics", "overview", "101", "for beginners", "fundamentals"],
+    intentBoost: { informational: 2 } // Gets extra points if intent is informational
+  },
+  problem_aware: {
+    // Knows something is wrong, describing pain points
+    signals: ["how to fix", "how to solve", "how to reduce", "how to improve", "how to avoid", "struggling with", "challenges", "problems with", "issues with", "why is my", "why does my", "too slow", "too expensive", "inefficient", "error", "failing", "broken", "pain points", "common mistakes", "risks of"],
+    intentBoost: { informational: 1 }
+  },
+  solution_aware: {
+    // Knows solutions exist, exploring approaches
+    signals: ["how to", "ways to", "methods", "strategies for", "tools for", "software for", "platform for", "solutions for", "systems for", "approaches to", "techniques", "automation", "streamline", "optimize", "best practices"],
+    intentBoost: { informational: 1, commercial_investigation: 1 }
+  },
+  product_aware: {
+    // Comparing specific products or brands
+    signals: ["vs", "versus", "compared to", "comparison", "alternative", "alternatives to", "review", "reviews", "features", "integrations", "pros and cons", "switch from", "migrate from", "better than"],
+    intentBoost: { commercial_investigation: 3 }
+  },
+  most_aware: {
+    // Ready to buy, needs final push
+    signals: ["pricing", "price", "cost", "plans", "demo", "free trial", "buy", "purchase", "discount", "coupon", "sign up", "get started", "implementation", "onboarding", "ROI", "case study", "testimonial"],
+    intentBoost: { transactional: 3 }
+  }
+};
+// Score each stage. Highest wins.
+```
+
+### 3. Keyword Cluster Engine
+
+Build a thematic cluster library organized by business domains. When a keyword is entered, match it against cluster dictionaries and return the best-fit cluster plus related keywords.
+
+```javascript
+const clusterLibrary = [
+  {
+    name: "Financial Close & Consolidation",
+    signals: ["financial close", "close process", "month-end", "reconciliation", "consolidation", "intercompany", "journal entry", "close management", "period end", "balance sheet"],
+    related: ["financial close automation", "month-end close checklist", "consolidation software", "intercompany reconciliation", "close management solution"]
+  },
+  {
+    name: "FP&A & Budgeting",
+    signals: ["budget", "forecast", "financial planning", "fp&a", "variance analysis", "scenario planning", "rolling forecast", "financial model", "planning cycle", "what-if analysis"],
+    related: ["budgeting software", "rolling forecast best practices", "FP&A automation", "scenario planning tools", "variance analysis template"]
+  },
+  {
+    name: "Reporting & Analytics",
+    signals: ["report", "reporting", "dashboard", "analytics", "business intelligence", "bi tool", "data visualization", "kpi", "metrics", "real-time reporting", "excel reporting"],
+    related: ["financial reporting software", "Excel reporting tools", "real-time dashboard", "KPI tracking", "management reporting"]
+  },
+  {
+    name: "ERP & System Integration",
+    signals: ["erp", "sap", "oracle", "netsuite", "dynamics", "integration", "connector", "data extract", "middleware", "api", "jdbc", "odbc", "driver"],
+    related: ["ERP reporting tools", "SAP data extraction", "Oracle integration", "JDBC driver setup", "database connectivity"]
+  },
+  {
+    name: "Compliance & Audit",
+    signals: ["compliance", "audit", "sox", "sarbanes", "regulatory", "internal controls", "risk management", "governance", "disclosure", "sec filing", "ifrm", "gaap"],
+    related: ["SOX compliance software", "audit trail automation", "regulatory reporting", "internal controls framework", "disclosure management"]
+  },
+  {
+    name: "Data Management & Connectivity",
+    signals: ["data", "database", "sql", "query", "etl", "data warehouse", "data lake", "cloud data", "data pipeline", "spreadsheet server", "connectivity", "simba", "driver"],
+    related: ["database connectivity solutions", "ETL tools comparison", "cloud data integration", "SQL reporting tools", "data warehouse optimization"]
+  },
+  {
+    name: "EPM & Performance Management",
+    signals: ["epm", "cpm", "performance management", "strategic planning", "scorecard", "balanced scorecard", "okr", "goal tracking", "corporate performance"],
+    related: ["EPM software comparison", "corporate performance management", "strategic planning tools", "OKR tracking software", "performance management platform"]
+  },
+  {
+    name: "Process Automation",
+    signals: ["automate", "automation", "workflow", "rpa", "manual process", "efficiency", "streamline", "eliminate manual", "digital transformation", "modernize"],
+    related: ["finance automation tools", "workflow automation software", "RPA for finance", "eliminate manual processes", "digital transformation in finance"]
+  },
+  {
+    name: "General Software Evaluation",
+    signals: ["software", "tool", "platform", "solution", "vendor", "saas", "cloud", "on-premise", "implementation", "deployment", "roi", "total cost"],
+    related: ["software evaluation checklist", "SaaS vs on-premise", "implementation timeline", "total cost of ownership", "vendor selection criteria"]
+  }
+  // ADD MORE CLUSTERS AS NEEDED — the engine should be easy to extend
+];
+
+// Matching logic:
+// 1. Score each cluster by how many of its signals appear in the keyword
+// 2. Return the top cluster match
+// 3. If no strong match (score < threshold), return "General / Uncategorized" with generic related keywords
+// 4. Generate related keywords by combining the input keyword's modifiers with the cluster's theme
+```
+
+### 4. Content Format Recommender
+
+Map intent + journey stage combinations to content recommendations:
+
+```javascript
+const contentMatrix = {
+  // [intent][journey_stage] = recommendation
+  informational: {
+    unaware:        { format: "Educational Blog Post",    example: "What Is [Topic]: A Beginner's Guide" },
+    problem_aware:  { format: "Problem-Solution Guide",   example: "How to Solve [Pain Point]: A Step-by-Step Guide" },
+    solution_aware: { format: "How-To / Methods Guide",   example: "X Ways to [Achieve Outcome] in 2025" },
+    product_aware:  { format: "In-Depth Review / Analysis", example: "[Product] Review: Features, Pros & Cons" },
+    most_aware:     { format: "Case Study / Success Story", example: "How [Company] Achieved [Result] with [Product]" }
+  },
+  commercial_investigation: {
+    unaware:        { format: "Industry Trends Roundup",  example: "The State of [Industry] in 2025" },
+    problem_aware:  { format: "Evaluation Guide",         example: "What to Look for in a [Solution Category]" },
+    solution_aware: { format: "Comparison / Vs Page",     example: "[Solution A] vs [Solution B]: Which Is Right for You?" },
+    product_aware:  { format: "Comparison Landing Page",  example: "[Product] vs [Competitor]: Feature-by-Feature Breakdown" },
+    most_aware:     { format: "Buyer's Guide / Checklist", example: "The Ultimate [Product Category] Buyer's Guide" }
+  },
+  transactional: {
+    unaware:        { format: "Lead Magnet / Free Resource", example: "Free [Template/Tool] for [Audience]" },
+    problem_aware:  { format: "Solution Landing Page",    example: "Solve [Problem] — See How [Product] Helps" },
+    solution_aware: { format: "Product Feature Page",     example: "[Product] for [Use Case]: Features & Benefits" },
+    product_aware:  { format: "Pricing / Comparison Page", example: "[Product] Pricing & Plans" },
+    most_aware:     { format: "Demo / Trial Landing Page", example: "Start Your Free Trial of [Product]" }
+  },
+  navigational: {
+    _default:       { format: "Optimized Landing Page",   example: "[Brand/Product] — [Key Value Prop]" }
+  }
+};
+```
+
+---
+
+## UI/Design Requirements
+
+### Layout
+- **Dark mode** default, clean and modern
+- Centered single-column layout, max-width ~900px
+- Single input field at top with "Analyze" button
+- Results appear below in a **card grid** (2x2 on desktop, stacked on mobile)
+
+### Result Cards
+
+1. **Search Intent Card**
+   - Color-coded badge: Informational (blue), Navigational (purple), Commercial Investigation (amber), Transactional (green)
+   - Confidence indicator (based on score margin between top two intents)
+   - Brief reasoning text
+
+2. **Buyer Journey Card**
+   - Stage name with a **5-step visual stepper/progress bar** showing all stages, with the detected stage highlighted
+   - Brief reasoning text
+
+3. **Keyword Cluster Card**
+   - Cluster name as header
+   - Related keywords shown as clickable **pill/tag badges** (clicking one runs it through the analyzer)
+   - Cluster theme description
+
+4. **Content Recommendation Card**
+   - Recommended format as header
+   - Suggested working title
+   - Brief rationale
 
 ### Additional Features
-- **History sidebar or section** — Keep a running log of analyzed keywords during the session so the user can compare
-- **Export** — Let the user copy results to clipboard or download the session history as CSV
-- **Bulk mode** — Allow pasting a comma-separated list of keywords and analyze them all, returning a table view of results
+
+- **Session History** — Collapsible section below results showing all keywords analyzed this session in a compact table (Keyword | Intent | Stage | Cluster)
+- **Bulk Mode Toggle** — Switch to a textarea, paste multiple keywords (comma or newline separated), results shown in a sortable table
+- **Export** — "Copy to Clipboard" and "Download CSV" buttons for session history and bulk results
+- **Click-to-Analyze** — Related keywords in the cluster card are clickable and auto-analyze when clicked
+
+### Animations
+- Subtle fade-in for result cards
+- Brief "analyzing" animation (CSS only, no external dependencies) while the engine processes
+- Smooth transitions when switching between single and bulk mode
 
 ---
 
 ## Technical Requirements
 
 ### Stack
-- **Frontend**: HTML/CSS/JavaScript (vanilla or React — your choice, keep it simple and fast)
-- **Backend**: Node.js or Python (lightweight API proxy to handle the Claude API call so the API key isn't exposed client-side)
-- **API**: Anthropic Claude API via `/v1/messages` endpoint
-- **Hosting**: This will be deployed on my dev server at dev.deacyde.com
+- **Single-page app**: HTML + CSS + vanilla JavaScript (or React if you prefer, but keep it self-contained)
+- **No backend, no API calls, no external services**
+- **No build tools required** — should work by just opening index.html or serving static files
+- **No dependencies** — pure vanilla, or at most a single CSS framework like Tailwind via CDN
 
-### Claude API Prompt (use this as the system prompt for the API call)
-
-```
-You are an expert SEO strategist and keyword analyst. When given a keyword or phrase, analyze it and return a JSON response with the following structure:
-
-{
-  "keyword": "<the input keyword>",
-  "search_intent": {
-    "type": "Informational | Navigational | Commercial Investigation | Transactional",
-    "confidence": "High | Medium | Low",
-    "reasoning": "<1-2 sentence explanation>"
-  },
-  "buyer_journey": {
-    "stage": "Unaware | Problem Aware | Solution Aware | Product Aware | Most Aware",
-    "position": <number 1-5 corresponding to the stage>,
-    "reasoning": "<1-2 sentence explanation>"
-  },
-  "keyword_cluster": {
-    "cluster_name": "<descriptive cluster name>",
-    "related_keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
-    "theme_description": "<brief description of the cluster theme>"
-  },
-  "content_recommendation": {
-    "format": "<e.g., How-to guide, Comparison page, Product page, Case study, Listicle>",
-    "reasoning": "<why this format fits>",
-    "suggested_title": "<a working title idea>"
-  }
-}
-
-Classification rules:
-- Informational: User wants to learn something (what, how, why, guide, tutorial, examples)
-- Navigational: User is looking for a specific brand, product, or website
-- Commercial Investigation: User is comparing options or researching before buying (best, vs, review, comparison, top)
-- Transactional: User is ready to take action (buy, pricing, demo, free trial, download, sign up)
-
-Buyer journey mapping:
-- Unaware: Doesn't know they have a problem. Broad, curiosity-driven queries.
-- Problem Aware: Knows the problem but not the solutions. Pain-point queries.
-- Solution Aware: Knows solutions exist, exploring categories. "How to" and method queries.
-- Product Aware: Knows specific products, comparing them. Brand + feature queries.
-- Most Aware: Ready to buy, needs a final push. Pricing, demo, trial queries.
-
-Always return ONLY valid JSON, no markdown formatting or code blocks.
-```
-
-### Project Structure (suggested)
+### Project Structure
 
 ```
 keyword-analyzer/
-├── index.html          # Main SPA
-├── style.css           # Styles
-├── app.js              # Frontend logic
-├── server.js           # API proxy (Node.js) OR server.py (Python)
-├── .env                # ANTHROPIC_API_KEY stored here
-├── package.json        # If using Node
-└── README.md
+├── index.html          # Main page
+├── css/
+│   └── style.css       # All styles
+├── js/
+│   ├── app.js          # Main app logic, UI handlers
+│   ├── classifiers/
+│   │   ├── intent.js       # Search intent classifier
+│   │   ├── journey.js      # Buyer journey classifier
+│   │   ├── cluster.js      # Keyword cluster engine
+│   │   └── content.js      # Content format recommender
+│   └── data/
+│       ├── intentSignals.js    # Signal word dictionaries for intent
+│       ├── journeySignals.js   # Signal word dictionaries for journey
+│       └── clusterLibrary.js   # Cluster definitions and related keywords
+├── README.md
 ```
 
----
-
-## UI/Design Guidelines
-
-- **Color scheme**: Dark mode preferred, with accent colors for each intent type:
-  - Informational = Blue
-  - Navigational = Purple  
-  - Commercial Investigation = Amber/Orange
-  - Transactional = Green
-- **Typography**: Clean sans-serif (Inter, system-ui, or similar)
-- **Layout**: Centered single-column, max-width ~800px, with the history panel as a collapsible sidebar or scrollable section below
-- **Animations**: Subtle fade-in for results, loading spinner/skeleton while waiting for the API response
-- **Responsive**: Should work well on both desktop and mobile
+### Extensibility
+- The signal word dictionaries and cluster library should be **easy to edit and extend** — stored as clean JavaScript objects or JSON
+- Include clear comments explaining how to add new clusters, new signal words, or adjust scoring weights
+- The architecture should make it simple to later swap in an API-based classifier if I want to upgrade
 
 ---
 
-## Bulk Mode Specifications
+## Scoring & Confidence Logic
 
-When the user toggles to "Bulk Mode":
-- Show a textarea instead of a single input
-- Accept comma-separated or newline-separated keywords
-- Display results in a sortable table with columns: Keyword | Intent | Journey Stage | Cluster | Content Type
-- Allow CSV export of the full table
+For each classifier, calculate a **confidence score** based on how decisively the top result won:
 
----
+```
+confidence = (topScore - secondScore) / topScore
 
-## Error Handling
+High confidence:   margin > 60%
+Medium confidence:  margin 30-60%
+Low confidence:    margin < 30%
+```
 
-- Show a friendly error message if the API call fails
-- Handle rate limiting gracefully with a retry mechanism
-- Validate input (reject empty submissions, trim whitespace)
-- Set a reasonable timeout (30 seconds for single, 60 seconds for bulk)
+Display the confidence level on each card so the user knows how definitive the classification is. For low-confidence results, consider showing the top 2 possibilities.
 
 ---
 
-## Getting Started
+## Edge Cases to Handle
 
-1. Set up the project directory structure
-2. Build the backend API proxy first — confirm it can successfully call Claude and return results
-3. Build the frontend UI with a hardcoded mock response to get the layout right
-4. Wire them together
-5. Add bulk mode and export features last
+- **Empty input** — Show validation message, don't process
+- **Single generic word** (e.g., "software") — Should still return results, but with low confidence. Fall back to the most general cluster.
+- **Brand names** — If the keyword contains a known brand (SAP, Oracle, Workiva, etc.), boost Navigational intent and Product Aware stage
+- **Question format** ("what is EPM?") — Strip question marks and question words before matching, but use them as strong intent signals first
+- **Very long phrases** — Truncate display but analyze the full string
+- **No cluster match** — Return "General / Uncategorized" with dynamically generated related keyword suggestions
 
-Please build this step by step, showing me each file as you create it, and let me test between major milestones.
+---
+
+## Build Order
+
+1. **Start with the classification engine** — Build and test intent.js, journey.js, cluster.js, and content.js with console.log outputs before touching the UI
+2. **Build the single-keyword UI** — Input, cards, basic styling
+3. **Wire the engine to the UI** — Enter keyword → show results
+4. **Add session history and click-to-analyze**
+5. **Add bulk mode and table view**
+6. **Add export (clipboard + CSV)**
+7. **Polish animations and responsive design**
+
+Show me each file as you build it and let me test between milestones.
