@@ -27,6 +27,10 @@
   #gameWrapper {
     position: relative;
     margin-top: 30px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: center;
   }
   #gameCanvas {
     display: block;
@@ -97,6 +101,48 @@
 <div id="gameWrapper">
   <canvas id="gameCanvas"></canvas>
   <div id="crt"></div>
+  <div id="legend" style="width:220px;background:#111;border:2px solid #333;border-radius:8px;padding:12px;color:#fff;font-family:'Press Start 2P',monospace;font-size:9px;line-height:1.8;flex-shrink:0;">
+
+    <div style="color:#0ff;margin-bottom:8px;font-size:10px;">⬛ LEGEND</div>
+
+    <div style="color:#ff0;margin-bottom:4px;">CONTROLS</div>
+    <div>🏹 Arrow / WASD</div>
+    <div>🔫 Space = Fire</div>
+    <div>💣 B = Bomb</div>
+    <br>
+
+    <div style="color:#ff0;margin-bottom:4px;">ENEMIES</div>
+    <div>🔴 SP — Spam Bot</div>
+    <div>⬜ 404 — Broken Link</div>
+    <div>🟣 DUP — Duplicate</div>
+    <div>🟡 TC — Thin Content</div>
+    <div>🟠 KWS — KW Stuffer</div>
+    <br>
+
+    <div style="color:#ff0;margin-bottom:4px;">POWER-UPS</div>
+    <div>🔵 KW — Keyword Shot</div>
+    <div>💙 BL — Backlink Blast</div>
+    <div>💚 CL — Content Laser</div>
+    <div>🧡 SCH — Schema Bomb</div>
+    <div>❤️ RR — Rank Rocket</div>
+    <br>
+
+    <div style="color:#ff0;margin-bottom:4px;">BOSSES</div>
+    <div>Lv1 🐼 PANDA</div>
+    <div>Lv2 🐧 PENGUIN</div>
+    <div>Lv3 🐦 HUMMINGBIRD</div>
+    <div>Lv4 🧠 RANKBRAIN</div>
+    <div>Lv5 🔴 HELPFUL</div>
+    <br>
+
+    <div style="color:#ff0;margin-bottom:4px;">LEVELS</div>
+    <div>1 — SERP Battlefield</div>
+    <div>2 — Backlink Forest</div>
+    <div>3 — Social Storm</div>
+    <div>4 — Data Center</div>
+    <div>5 — Google Core</div>
+
+  </div>
 </div>
 <div id="mobileControls">
   <div id="dpad">
@@ -129,7 +175,7 @@ canvas.height = BASE_H;
 // ---- State ----
 let gameState = 'title'; // title | playing | levelTransition | bossWarning | gameOver | win
 let score = 0;
-let hiScore = parseInt(localStorage.getItem('seo1942hi') || '0');
+let hiScore = parseInt(localStorage.getItem('seodhi') || '0');
 let lives = 3;
 let currentLevel = 1;
 let frameCount = 0;
@@ -569,7 +615,7 @@ function damagePlayer() {
     createExplosion(player.x+player.w/2, player.y+player.h/2, 40, '#0ff');
     gameState = 'gameOver';
     gameOverTimer = 0;
-    if (score > hiScore) { hiScore = score; localStorage.setItem('seo1942hi',hiScore); }
+    if (score > hiScore) { hiScore = score; localStorage.setItem('seodhi',hiScore); }
   }
 }
 
@@ -1298,7 +1344,7 @@ function drawTitle() {
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('SEO', BASE_W/2, BASE_H*0.22);
   ctx.fillStyle='#ff0'; ctx.shadowColor='#ff0'; ctx.font="16px 'Press Start 2P',monospace";
-  ctx.fillText('1942', BASE_W/2, BASE_H*0.36);
+  ctx.fillText('NES SHOOTER', BASE_W/2, BASE_H*0.36);
 
   ctx.shadowBlur=0; ctx.fillStyle='#888'; ctx.font="6px 'Press Start 2P',monospace";
   ctx.fillText('NES VERTICAL SHOOTER', BASE_W/2, BASE_H*0.5);
