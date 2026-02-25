@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO Anomaly Detector – Deacyde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d0d;
+    --card: #1a1a1a;
+    --border: #333;
+    --text: #fff;
+    --muted: #888;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --drop: rgba(220,38,38,0.15);
+    --drop-border: #ef4444;
+    --spike: rgba(22,163,74,0.15);
+    --spike-border: #22c55e;
+    --warn: rgba(234,179,8,0.15);
+    --warn-border: #eab308;
+  }
+  body.light {
+    --bg: #f5f5f5;
+    --card: #ffffff;
+    --border: #ddd;
+    --text: #111;
+    --muted: #666;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .2s, color .2s; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Layout */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .back-link { color: var(--muted); font-size: 0.9rem; }
+  .back-link:hover { color: var(--text); }
+  .theme-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+  /* Mode Toggle */
+  .mode-toggle { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .mode-btn { flex: 1; max-width: 220px; padding: 0.9rem 1.5rem; border-radius: 10px; border: 2px solid var(--border); background: var(--card); color: var(--muted); font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .mode-btn.active { border-color: var(--accent); background: rgba(124,58,237,0.15); color: var(--text); }
+  .mode-btn:hover:not(.active) { border-color: #555; color: var(--text); }
+
+  /* Upload */
+  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 2.5rem 2rem; text-align: center; background: var(--card); cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 1.5rem; }
+  .upload-zone.drag-over { border-color: var(--accent); background: rgba(124,58,237,0.08); }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .upload-zone p { color: var(--muted); margin-bottom: 0.5rem; }
+  .upload-zone .filename { color: var(--accent); font-weight: 600; margin-top: 0.5rem; font-size: 0.9rem; }
+  .pick-btn { margin-top: 0.75rem; background: var(--accent); color: #fff; border: none; padding: 0.6rem 1.4rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: background .2s; }
+  .pick-btn:hover { background: var(--accent-hover); }
+  #fileInput { display: none; }
+
+  /* Sensitivity */
+  .sensitivity-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .sensitivity-row label { font-weight: 600; font-size: 0.9rem; color: var(--muted); }
+  .sens-btn { padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.85rem; cursor: pointer; transition: all .2s; }
+  .sens-btn.active { border-color: var(--accent); background: rgba(124,58,237,0.15); color: var(--text); }
+  .sens-btn:hover:not(.active) { border-color: #555; color: var(--text); }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  @media (max-width: 768px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+  .summary-card .card-label { color: var(--muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
+  .summary-card .card-value { font-size: 1.8rem; font-weight: 700; line-height: 1; margin-bottom: 0.25rem; }
+  .summary-card .card-sub { color: var(--muted); font-size: 0.8rem; }
+
+  /* Filters */
+  .filters-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filters-row select, .filters-row button { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+  .filters-row select:focus { outline: none; border-color: var(--accent); }
+  .filter-toggle { transition: all .2s; }
+  .filter-toggle.active { border-color: var(--accent); background: rgba(124,58,237,0.15); color: var(--text); }
+  .export-btn { margin-left: auto; background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; font-weight: 600; transition: background .2s; }
+  .export-btn:hover { background: var(--accent-hover) !important; }
+
+  /* Table */
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { padding: 0.75rem 0.9rem; text-align: left; color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 0.65rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; white-space: nowrap; }
+  .body.light td { border-bottom: 1px solid rgba(0,0,0,0.06); }
+  tr.row-drop { background: var(--drop); }
+  tr.row-spike { background: var(--spike); }
+  tr.row-warn { background: var(--warn); }
+  .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-critical { background: rgba(220,38,38,0.2); color: #f87171; border: 1px solid rgba(220,38,38,0.4); }
+  .badge-high { background: rgba(234,88,12,0.2); color: #fb923c; border: 1px solid rgba(234,88,12,0.4); }
+  .badge-medium { background: rgba(234,179,8,0.2); color: #facc15; border: 1px solid rgba(234,179,8,0.4); }
+  .badge-low { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
+  .pct-drop { color: #f87171; font-weight: 600; }
+  .pct-spike { color: #4ade80; font-weight: 600; }
+  .pct-warn { color: #facc15; font-weight: 600; }
+  .cause-tag { font-size: 0.72rem; color: var(--muted); display: block; margin-top: 2px; }
+  .url-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Empty / loading state */
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-state .big-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text); }
+  .loading-state { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="../index.html" class="back-link">← Back to Deacyde.com</a>
+  <button class="theme-btn" id="themeBtn" title="Toggle theme">🌙</button>
+</div>
+
+<div class="container">
+  <h1>SEO Anomaly Detector</h1>
+  <p class="subtitle">Upload GA4 or GSC CSV exports to detect traffic &amp; ranking anomalies</p>
+
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="ga4">📊 GA4 Traffic</button>
+    <button class="mode-btn" data-mode="gsc">🔍 GSC Performance</button>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">📂</div>
+    <p>Drag &amp; drop a CSV file here</p>
+    <p style="font-size:0.82rem;">GA4 or GSC export — .csv format</p>
+    <button class="pick-btn" id="pickBtn">Choose File</button>
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="filename" id="filenameDisplay"></div>
+  </div>
+
+  <!-- Sensitivity -->
+  <div class="sensitivity-row">
+    <label>Sensitivity:</label>
+    <button class="sens-btn" data-sens="low">Low (&gt;50%)</button>
+    <button class="sens-btn active" data-sens="medium">Medium (&gt;30%)</button>
+    <button class="sens-btn" data-sens="high">High (&gt;15%)</button>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid" id="summaryGrid">
+    <div class="summary-card">
+      <div class="card-label">Total Anomalies</div>
+      <div class="card-value" id="cardTotal">—</div>
+      <div class="card-sub">detected</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Biggest Drop</div>
+      <div class="card-value" id="cardDrop" style="color:#f87171">—</div>
+      <div class="card-sub" id="cardDropSub">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Biggest Spike</div>
+      <div class="card-value" id="cardSpike" style="color:#4ade80">—</div>
+      <div class="card-sub" id="cardSpikeSub">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Pages Affected</div>
+      <div class="card-value" id="cardPages">—</div>
+      <div class="card-sub">unique pages</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-row" id="filtersRow">
+    <label style="font-size:0.85rem;color:var(--muted)">Sort:</label>
+    <select id="sortSelect">
+      <option value="severity">Severity</option>
+      <option value="pct">% Change</option>
+      <option value="date">Date</option>
+    </select>
+    <label style="font-size:0.85rem;color:var(--muted)">Metric:</label>
+    <select id="metricFilter">
+      <option value="all">All</option>
+      <option value="sessions">Sessions</option>
+      <option value="clicks">Clicks</option>
+      <option value="impressions">Impressions</option>
+      <option value="ctr">CTR</option>
+      <option value="position">Position</option>
+    </select>
+    <button class="filter-toggle" id="negativeToggle">Show All</button>
+    <button class="export-btn" id="exportBtn">⬇ Export CSV</button>
+  </div>
+
+  <!-- Table / Empty State -->
+  <div id="tableContainer">
+    <div class="empty-state">
+      <div class="big-icon">📡</div>
+      <h3>No data loaded yet</h3>
+      <p>Upload a GA4 or GSC CSV export above to begin anomaly detection</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let currentMode = 'ga4';
+let currentSens = localStorage.getItem('anomaly-sens') || 'medium';
+let rawRows = [];
+let allAnomalies = [];
+let filteredAnomalies = [];
+let negativeOnly = false;
+
+const THRESHOLDS = { low: 50, medium: 30, high: 15 };
+
+// ─── Theme ───────────────────────────────────────────────────────────────────
+const themeBtn = document.getElementById('themeBtn');
+const savedTheme = localStorage.getItem('anomaly-theme') || 'dark';
+if (savedTheme === 'light') { document.body.classList.add('light'); themeBtn.textContent = '☀️'; }
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  const isLight = document.body.classList.contains('light');
+  themeBtn.textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('anomaly-theme', isLight ? 'light' : 'dark');
+});
+
+// ─── Mode toggle ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    if (rawRows.length) runDetection();
+  });
+});
+
+// ─── Sensitivity ─────────────────────────────────────────────────────────────
+function applySensUI() {
+  document.querySelectorAll('.sens-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sens === currentSens);
+  });
+}
+applySensUI();
+document.querySelectorAll('.sens-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentSens = btn.dataset.sens;
+    localStorage.setItem('anomaly-sens', currentSens);
+    applySensUI();
+    if (rawRows.length) runDetection();
+  });
+});
+
+// ─── File upload ─────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const pickBtn = document.getElementById('pickBtn');
+const filenameDisplay = document.getElementById('filenameDisplay');
+
+pickBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  filenameDisplay.textContent = '📄 ' + file.name;
+  showLoading();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      rawRows = parseCSV(e.target.result);
+      runDetection();
+    } catch(err) {
+      showError('Could not parse CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('File has fewer than 2 lines');
+  const headers = parseCSVLine(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => { row[h.trim()] = (vals[idx] || '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ─── Header normalisation ────────────────────────────────────────────────────
+const GA4_MAP = {
+  'date': 'date',
+  'page': 'page', 'landing page': 'page', 'page path and screen class': 'page',
+  'sessions': 'sessions', 'session default channel group': null,
+  'users': 'users', 'total users': 'users', 'active users': 'users',
+  'pageviews': 'pageviews', 'views': 'pageviews', 'screen page views': 'pageviews',
+  'new users': 'newusers', 'bounce rate': 'bouncerate',
+  'engaged sessions': 'engaged'
+};
+const GSC_MAP = {
+  'date': 'date',
+  'page': 'page', 'top pages': 'page', 'landing page': 'page', 'url': 'page',
+  'clicks': 'clicks', 'total clicks': 'clicks',
+  'impressions': 'impressions', 'total impressions': 'impressions',
+  'ctr': 'ctr', 'click through rate': 'ctr',
+  'position': 'position', 'average position': 'position'
+};
+
+function normalizeHeaders(rawHeaders, mode) {
+  const map = mode === 'gsc' ? GSC_MAP : GA4_MAP;
+  const result = {};
+  rawHeaders.forEach(h => {
+    const key = h.toLowerCase().trim();
+    if (map[key] !== undefined && map[key] !== null) result[h] = map[key];
+  });
+  return result;
+}
+
+// ─── Baseline computation ─────────────────────────────────────────────────────
+function computeBaseline(sortedDates, valuesByDate, targetDate) {
+  // 7-day moving average of values strictly BEFORE targetDate
+  const idx = sortedDates.indexOf(targetDate);
+  const window = [];
+  for (let i = Math.max(0, idx - 7); i < idx; i++) {
+    const v = valuesByDate[sortedDates[i]];
+    if (v !== undefined && !isNaN(v)) window.push(v);
+  }
+  if (window.length === 0) return null;
+  return window.reduce((a,b) => a+b, 0) / window.length;
+}
+
+// ─── Detection ───────────────────────────────────────────────────────────────
+const SEVERITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+
+function detectAnomalies(rows, sensitivity) {
+  const threshold = THRESHOLDS[sensitivity];
+  const rawHeaders = Object.keys(rows[0] || {});
+  const hmap = normalizeHeaders(rawHeaders, currentMode);
+
+  // Build reverse map: normalised name -> original header
+  const rev = {};
+  Object.entries(hmap).forEach(([orig, norm]) => { rev[norm] = orig; });
+
+  const dateKey = rev['date'];
+  const pageKey = rev['page'];
+
+  if (!dateKey || !pageKey) {
+    throw new Error('Could not find "date" or "page" columns. Check that your CSV has those columns.');
+  }
+
+  const metrics = [];
+  ['sessions','users','pageviews','clicks','impressions','ctr','position','newusers','bouncerate','engaged'].forEach(m => {
+    if (rev[m]) metrics.push({ norm: m, orig: rev[m] });
+  });
+  if (metrics.length === 0) throw new Error('No metric columns found in CSV.');
+
+  // Group by page → metric → date → value
+  const pageData = {}; // pageData[page][metric][date] = value
+  rows.forEach(row => {
+    const page = row[pageKey] || '(unknown)';
+    const date = row[dateKey] || '';
+    if (!page || !date) return;
+    if (!pageData[page]) pageData[page] = {};
+    metrics.forEach(({ norm, orig }) => {
+      if (!pageData[page][norm]) pageData[page][norm] = {};
+      let v = parseFloat((row[orig] || '').replace(/,/g,'').replace(/%/g,''));
+      if (!isNaN(v)) pageData[page][norm][date] = v;
+    });
+  });
+
+  const anomalies = [];
+  const dateDropCounts = {}; // date → count of drops (for algorithm update heuristic)
+
+  Object.entries(pageData).forEach(([page, mdata]) => {
+    Object.entries(mdata).forEach(([metric, byDate]) => {
+      const sortedDates = Object.keys(byDate).sort();
+      sortedDates.forEach(date => {
+        const baseline = computeBaseline(sortedDates, byDate, date);
+        if (baseline === null || baseline === 0) return;
+        const actual = byDate[date];
+        let pct = (actual - baseline) / Math.abs(baseline) * 100;
+        // Position: higher is worse, invert so "drop" means worsening
+        const isPosition = metric === 'position';
+        if (isPosition) pct = -pct;
+
+        const absPct = Math.abs(pct);
+        let type = null, severity = null;
+        if (absPct >= threshold * 2)       { type = pct < 0 ? 'drop' : 'spike'; severity = 'Critical'; }
+        else if (absPct >= threshold * 1.5){ type = pct < 0 ? 'drop' : 'spike'; severity = 'High'; }
+        else if (absPct >= threshold)      { type = pct < 0 ? 'drop' : 'spike'; severity = 'Medium'; }
+        else if (absPct >= threshold * 0.75){ type = pct < 0 ? 'drop' : 'spike'; severity = 'Low'; }
+        if (!type) return;
+
+        if (type === 'drop') {
+          dateDropCounts[date] = (dateDropCounts[date] || 0) + 1;
+        }
+
+        // Last 14 data points for sparkline
+        const idx = sortedDates.indexOf(date);
+        const sparkValues = sortedDates.slice(Math.max(0, idx - 13), idx + 1).map(d => byDate[d]);
+
+        anomalies.push({ page, date, metric, baseline, actual, pct: isPosition ? -pct : pct, type, severity, sparkValues, sortedDates, byDate });
+      });
+    });
+  });
+
+  // Assign likely cause
+  anomalies.forEach(a => {
+    if (a.type === 'drop') {
+      a.cause = (dateDropCounts[a.date] || 0) > 3 ? 'Possible algorithm update' : 'Page-level issue';
+    } else {
+      a.cause = a.metric === 'position' ? 'Ranking improvement' : 'Viral / trending content';
+    }
+  });
+
+  return anomalies;
+}
+
+// ─── Main run ─────────────────────────────────────────────────────────────────
+function runDetection() {
+  showLoading();
+  setTimeout(() => {
+    try {
+      allAnomalies = detectAnomalies(rawRows, currentSens);
+      applyFilters();
+    } catch(err) {
+      showError(err.message);
+    }
+  }, 50);
+}
+
+function applyFilters() {
+  const sort = document.getElementById('sortSelect').value;
+  const metric = document.getElementById('metricFilter').value;
+
+  filteredAnomalies = allAnomalies.filter(a => {
+    if (metric !== 'all' && a.metric !== metric) return false;
+    if (negativeOnly && a.type !== 'drop') return false;
+    return true;
+  });
+
+  if (sort === 'severity') {
+    filteredAnomalies.sort((a,b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || Math.abs(b.pct) - Math.abs(a.pct));
+  } else if (sort === 'pct') {
+    filteredAnomalies.sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct));
+  } else if (sort === 'date') {
+    filteredAnomalies.sort((a,b) => b.date.localeCompare(a.date));
+  }
+
+  renderDashboard(filteredAnomalies);
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderDashboard(anomalies) {
+  // Summary cards
+  const drops = anomalies.filter(a => a.type === 'drop');
+  const spikes = anomalies.filter(a => a.type === 'spike');
+  const pages = new Set(anomalies.map(a => a.page));
+
+  animateCount('cardTotal', 0, anomalies.length, '');
+  animateCount('cardPages', 0, pages.size, '');
+
+  const bigDrop = drops.reduce((best, a) => Math.abs(a.pct) > Math.abs(best?.pct||0) ? a : best, null);
+  const bigSpike = spikes.reduce((best, a) => Math.abs(a.pct) > Math.abs(best?.pct||0) ? a : best, null);
+
+  if (bigDrop) {
+    document.getElementById('cardDrop').textContent = Math.round(bigDrop.pct) + '%';
+    document.getElementById('cardDropSub').textContent = bigDrop.metric;
+  } else {
+    document.getElementById('cardDrop').textContent = '—';
+    document.getElementById('cardDropSub').textContent = 'no drops';
+  }
+  if (bigSpike) {
+    document.getElementById('cardSpike').textContent = '+' + Math.round(bigSpike.pct) + '%';
+    document.getElementById('cardSpikeSub').textContent = bigSpike.metric;
+  } else {
+    document.getElementById('cardSpike').textContent = '—';
+    document.getElementById('cardSpikeSub').textContent = 'no spikes';
+  }
+
+  // Table
+  if (anomalies.length === 0) {
+    document.getElementById('tableContainer').innerHTML = `
+      <div class="empty-state">
+        <div class="big-icon">✅</div>
+        <h3>No anomalies found</h3>
+        <p>Try lowering the sensitivity threshold, or check that your CSV has enough data rows.</p>
+      </div>`;
+    return;
+  }
+
+  const rows = anomalies.map((a, i) => {
+    const typeEmoji = a.type === 'drop' ? '🔴 Drop' : a.type === 'spike' ? '🟢 Spike' : '🟡 Warning';
+    const rowClass = a.type === 'drop' ? 'row-drop' : a.type === 'spike' ? 'row-spike' : 'row-warn';
+    const pctClass = a.type === 'drop' ? 'pct-drop' : a.type === 'spike' ? 'pct-spike' : 'pct-warn';
+    const pctSign = a.pct > 0 ? '+' : '';
+    const sevBadge = `<span class="badge badge-${a.severity.toLowerCase()}">${a.severity}</span>`;
+    return `<tr class="${rowClass}">
+      <td><span class="url-cell" title="${esc(a.page)}">${esc(a.page)}</span><span class="cause-tag">${esc(a.cause)}</span></td>
+      <td>${esc(a.date)}</td>
+      <td>${esc(a.metric)}</td>
+      <td>${fmtNum(a.baseline)}</td>
+      <td>${fmtNum(a.actual)}</td>
+      <td class="${pctClass}">${pctSign}${a.pct.toFixed(1)}%</td>
+      <td>${typeEmoji}</td>
+      <td>${sevBadge}</td>
+      <td><canvas id="spark-${i}" width="80" height="24" style="display:block"></canvas></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tableContainer').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Page / URL</th><th>Date</th><th>Metric</th>
+          <th>Expected (7d avg)</th><th>Actual</th><th>% Change</th>
+          <th>Type</th><th>Severity</th><th>Sparkline</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  // Draw sparklines after DOM update
+  requestAnimationFrame(() => {
+    anomalies.forEach((a, i) => {
+      const canvas = document.getElementById('spark-' + i);
+      if (canvas) drawSparkline(canvas, a.sparkValues, a.type);
+    });
+  });
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+function drawSparkline(canvas, values, type) {
+  if (!values || values.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => ({
+    x: (i / (values.length - 1)) * W,
+    y: H - ((v - min) / range) * (H - 4) - 2
+  }));
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = type === 'drop' ? '#ef4444' : type === 'spike' ? '#22c55e' : '#eab308';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Fill under line
+  ctx.lineTo(pts[pts.length-1].x, H);
+  ctx.lineTo(pts[0].x, H);
+  ctx.closePath();
+  ctx.fillStyle = type === 'drop' ? 'rgba(239,68,68,0.15)' : type === 'spike' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)';
+  ctx.fill();
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtNum(n) {
+  if (n === null || isNaN(n)) return '—';
+  return Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2);
+}
+function animateCount(id, from, to, suffix) {
+  const el = document.getElementById(id);
+  const dur = 600, fps = 40, steps = dur / (1000/fps);
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    const val = Math.round(from + (to - from) * (step / steps));
+    el.textContent = val + suffix;
+    if (step >= steps) { el.textContent = to + suffix; clearInterval(timer); }
+  }, 1000/fps);
+}
+function showLoading() {
+  document.getElementById('tableContainer').innerHTML = `
+    <div class="loading-state"><div class="spinner"></div><p>Analysing CSV data…</p></div>`;
+}
+function showError(msg) {
+  document.getElementById('tableContainer').innerHTML = `
+    <div class="empty-state">
+      <div class="big-icon">⚠️</div>
+      <h3>Parse Error</h3>
+      <p>${esc(msg)}</p>
+    </div>`;
+}
+
+// ─── Filters & export ─────────────────────────────────────────────────────────
+document.getElementById('sortSelect').addEventListener('change', applyFilters);
+document.getElementById('metricFilter').addEventListener('change', applyFilters);
+
+const negBtn = document.getElementById('negativeToggle');
+negBtn.addEventListener('click', () => {
+  negativeOnly = !negativeOnly;
+  negBtn.textContent = negativeOnly ? 'Negative Only' : 'Show All';
+  negBtn.classList.toggle('active', negativeOnly);
+  applyFilters();
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!filteredAnomalies.length) return;
+  const headers = ['Page','Date','Metric','Expected','Actual','PctChange','Type','Severity','Cause'];
+  const lines = [headers.join(',')];
+  filteredAnomalies.forEach(a => {
+    lines.push([
+      '"' + a.page.replace(/"/g,'""') + '"',
+      a.date, a.metric,
+      a.baseline !== null ? a.baseline.toFixed(2) : '',
+      a.actual !== null ? a.actual : '',
+      a.pct.toFixed(2),
+      a.type,
+      a.severity,
+      '"' + a.cause + '"'
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'anomalies.csv'; link.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
