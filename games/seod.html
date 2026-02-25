@@ -108,7 +108,7 @@
     <div style="color:#ff0;margin-bottom:4px;">CONTROLS</div>
     <div>🏹 Arrow / WASD</div>
     <div>🔫 Space = Fire</div>
-    <div>💣 B = Missile (regen)</div>
+    <div>💣 B = Missile · X = Bomb</div>
     <br>
 
     <div style="color:#ff0;margin-bottom:4px;">ENEMIES</div>
@@ -123,7 +123,7 @@
     <div>🔵 KW — Keyword Shot</div>
     <div>💙 BL — Backlink Blast</div>
     <div>💚 CL — Content Laser</div>
-    <div>🧡 SCH — +2 Missiles</div>
+    <div>🧡 SCH — Screen Bomb</div>
     <div>❤️ RR — Rank Rocket</div>
     <br>
 
@@ -190,6 +190,7 @@ let laserActive = false;
 
 // Missile stock
 let missiles = 3;
+let bombs = 0;  // screen-clear bombs, picked up via SCH
 const MAX_MISSILES = 5;
 let missileRegen = 0;
 const MISSILE_REGEN_FRAMES = 600; // ~10s at 60fps
@@ -209,6 +210,7 @@ window.addEventListener('keydown', e => {
   if ((gameState === 'levelTransition' || gameState === 'win') && e.code === 'Space') continueAfterLevel();
   if (gameState === 'gameOver' && e.code === 'Space') initGame();
   if (gameState === 'playing' && e.code === 'KeyB') handleBomb();
+  if (gameState === 'playing' && e.code === 'KeyX') fireScreenBomb();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -333,7 +335,7 @@ const ENEMY_DEFS = {
 function initGame() {
   score = 0; lives = 3; currentLevel = 1; frameCount = 0;
   weapon = 'KW'; weaponTimer = 0;
-  missiles = 3; missileRegen = 0;
+  missiles = 3; missileRegen = 0; bombs = 0;
   bullets = []; enemyBullets = []; enemies = []; powerUps = [];
   explosions = []; particles = []; boss = null; bossActive = false;
   resetPlayer();
@@ -420,7 +422,7 @@ function handleShooting() {
   if (!shooting) { autoFireTimer = 0; return; }
   autoFireTimer++;
   if (autoFireTimer < 2) return; // small delay for first shot
-  const cooldowns = { KW:12, BL:18, CL:5, SCH:999, RR:25 };
+  const cooldowns = { KW:12, BL:18, CL:5, RR:25 };
   player.shootCooldown = cooldowns[weapon] || 12;
 
   const bx = player.x + player.w/2 - 2;
@@ -466,6 +468,20 @@ function handleBomb() {
   });
 }
 
+function fireScreenBomb() {
+  if (bombs <= 0) { showFlash('NO BOMBS!', '#f00'); return; }
+  bombs--;
+  createExplosion(BASE_W/2, BASE_H/2, 120, '#f80');
+  enemies.forEach(e => {
+    score += e.score;
+    spawnPowerUpChance(e.x, e.y);
+    createExplosion(e.x+e.w/2, e.y+e.h/2, 20, e.color);
+  });
+  if (boss) { boss.hp -= 40; boss.hitFlash = 15; if (boss.hp <= 0) killBoss(); }
+  enemies = [];
+  enemyBullets = [];
+}
+
 function getNearestEnemy() {
   let nearest = null, minD = 9999;
   [...enemies, boss ? boss : null].filter(Boolean).forEach(e => {
@@ -483,7 +499,7 @@ function getNearestEnemy() {
 const PU_TYPES = [
   { type:'BL', color:'#44f', label:'BL', name:'Backlink Blast' },
   { type:'CL', color:'#0f0', label:'CL', name:'Content Laser' },
-  { type:'SCH',color:'#f80', label:'SCH',name:'+2 Missiles' },
+  { type:'SCH',color:'#f80', label:'SCH',name:'Screen Bomb' },
   { type:'RR', color:'#f44', label:'RR', name:'Rank Rocket' },
   { type:'LIFE',color:'#f0f',label:'♥', name:'Extra Life' },
 ];
@@ -499,9 +515,8 @@ function handlePowerUp(pu) {
     lives = Math.min(lives+1, 5);
     player.shield = lives;
   } else if (pu.type === 'SCH') {
-    missiles = Math.min(missiles + 2, MAX_MISSILES);
-    missileRegen = 0;
-    showFlash('+2 MISSILES!', '#f80');
+    bombs = Math.min(bombs + 1, 3);
+    showFlash('SCHEMA BOMB +1', '#f80');
   } else {
     weapon = pu.type;
     weaponTimer = 600;
@@ -1404,6 +1419,10 @@ function drawHUD() {
   ctx.fillRect(6, 54, 60, 4);
   ctx.fillStyle = '#f80';
   ctx.fillRect(6, 54, 60 * (missileRegen / MISSILE_REGEN_FRAMES), 4);
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#f80';
+  ctx.fillText('💣 x' + bombs, 10, 68);
 
   ctx.restore();
 }
