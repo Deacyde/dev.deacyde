@@ -1,0 +1,146 @@
+Delete after app is created
+
+# Prompt: Build a Keyword Intent & Journey Analyzer Web App
+
+## Context
+
+I want to build a web application hosted on **dev.deacyde.com** that lets a user enter a keyword or phrase and instantly returns:
+
+1. **Search Intent Classification** — Informational, Navigational, Commercial Investigation, or Transactional
+2. **Buyer Journey Stage** — Unaware, Problem Aware, Solution Aware, Product Aware, or Most Aware (using Eugene Schwartz's awareness stages)
+3. **Keyword Cluster Suggestion** — A thematic cluster the keyword likely belongs to (e.g., "ERP implementation," "financial close automation," "data connectivity")
+
+The app should be a single-page web application with a modern, clean UI.
+
+---
+
+## Functional Requirements
+
+### Core Feature
+- A single input field where the user types a keyword or phrase and hits Enter or clicks "Analyze"
+- On submission, the app calls the **Anthropic Claude API** (`claude-sonnet-4-5-20250929`) to classify the keyword
+- Results are displayed in a card-based layout below the input
+
+### Result Cards (display after analysis)
+1. **Search Intent** — Show the intent type with a color-coded badge and a 1-2 sentence explanation of *why* it was classified that way
+2. **Buyer Journey Stage** — Show the stage name, a visual indicator of where it falls on the journey spectrum (like a progress bar or stepper), and a brief rationale
+3. **Keyword Cluster** — Show a suggested cluster name, 3-5 related keywords that would belong in the same cluster, and a brief description of the cluster theme
+4. **Content Recommendation** — A bonus section suggesting what type of content would best serve this keyword (e.g., "comparison guide," "how-to tutorial," "product landing page," "case study")
+
+### Additional Features
+- **History sidebar or section** — Keep a running log of analyzed keywords during the session so the user can compare
+- **Export** — Let the user copy results to clipboard or download the session history as CSV
+- **Bulk mode** — Allow pasting a comma-separated list of keywords and analyze them all, returning a table view of results
+
+---
+
+## Technical Requirements
+
+### Stack
+- **Frontend**: HTML/CSS/JavaScript (vanilla or React — your choice, keep it simple and fast)
+- **Backend**: Node.js or Python (lightweight API proxy to handle the Claude API call so the API key isn't exposed client-side)
+- **API**: Anthropic Claude API via `/v1/messages` endpoint
+- **Hosting**: This will be deployed on my dev server at dev.deacyde.com
+
+### Claude API Prompt (use this as the system prompt for the API call)
+
+```
+You are an expert SEO strategist and keyword analyst. When given a keyword or phrase, analyze it and return a JSON response with the following structure:
+
+{
+  "keyword": "<the input keyword>",
+  "search_intent": {
+    "type": "Informational | Navigational | Commercial Investigation | Transactional",
+    "confidence": "High | Medium | Low",
+    "reasoning": "<1-2 sentence explanation>"
+  },
+  "buyer_journey": {
+    "stage": "Unaware | Problem Aware | Solution Aware | Product Aware | Most Aware",
+    "position": <number 1-5 corresponding to the stage>,
+    "reasoning": "<1-2 sentence explanation>"
+  },
+  "keyword_cluster": {
+    "cluster_name": "<descriptive cluster name>",
+    "related_keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
+    "theme_description": "<brief description of the cluster theme>"
+  },
+  "content_recommendation": {
+    "format": "<e.g., How-to guide, Comparison page, Product page, Case study, Listicle>",
+    "reasoning": "<why this format fits>",
+    "suggested_title": "<a working title idea>"
+  }
+}
+
+Classification rules:
+- Informational: User wants to learn something (what, how, why, guide, tutorial, examples)
+- Navigational: User is looking for a specific brand, product, or website
+- Commercial Investigation: User is comparing options or researching before buying (best, vs, review, comparison, top)
+- Transactional: User is ready to take action (buy, pricing, demo, free trial, download, sign up)
+
+Buyer journey mapping:
+- Unaware: Doesn't know they have a problem. Broad, curiosity-driven queries.
+- Problem Aware: Knows the problem but not the solutions. Pain-point queries.
+- Solution Aware: Knows solutions exist, exploring categories. "How to" and method queries.
+- Product Aware: Knows specific products, comparing them. Brand + feature queries.
+- Most Aware: Ready to buy, needs a final push. Pricing, demo, trial queries.
+
+Always return ONLY valid JSON, no markdown formatting or code blocks.
+```
+
+### Project Structure (suggested)
+
+```
+keyword-analyzer/
+├── index.html          # Main SPA
+├── style.css           # Styles
+├── app.js              # Frontend logic
+├── server.js           # API proxy (Node.js) OR server.py (Python)
+├── .env                # ANTHROPIC_API_KEY stored here
+├── package.json        # If using Node
+└── README.md
+```
+
+---
+
+## UI/Design Guidelines
+
+- **Color scheme**: Dark mode preferred, with accent colors for each intent type:
+  - Informational = Blue
+  - Navigational = Purple  
+  - Commercial Investigation = Amber/Orange
+  - Transactional = Green
+- **Typography**: Clean sans-serif (Inter, system-ui, or similar)
+- **Layout**: Centered single-column, max-width ~800px, with the history panel as a collapsible sidebar or scrollable section below
+- **Animations**: Subtle fade-in for results, loading spinner/skeleton while waiting for the API response
+- **Responsive**: Should work well on both desktop and mobile
+
+---
+
+## Bulk Mode Specifications
+
+When the user toggles to "Bulk Mode":
+- Show a textarea instead of a single input
+- Accept comma-separated or newline-separated keywords
+- Display results in a sortable table with columns: Keyword | Intent | Journey Stage | Cluster | Content Type
+- Allow CSV export of the full table
+
+---
+
+## Error Handling
+
+- Show a friendly error message if the API call fails
+- Handle rate limiting gracefully with a retry mechanism
+- Validate input (reject empty submissions, trim whitespace)
+- Set a reasonable timeout (30 seconds for single, 60 seconds for bulk)
+
+---
+
+## Getting Started
+
+1. Set up the project directory structure
+2. Build the backend API proxy first — confirm it can successfully call Claude and return results
+3. Build the frontend UI with a hardcoded mock response to get the layout right
+4. Wire them together
+5. Add bulk mode and export features last
+
+Please build this step by step, showing me each file as you create it, and let me test between major milestones.
