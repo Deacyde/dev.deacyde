@@ -108,7 +108,7 @@
     <div style="color:#ff0;margin-bottom:4px;">CONTROLS</div>
     <div>🏹 Arrow / WASD</div>
     <div>🔫 Space = Fire</div>
-    <div>💣 B = Bomb</div>
+    <div>💣 B = Missile (regen)</div>
     <br>
 
     <div style="color:#ff0;margin-bottom:4px;">ENEMIES</div>
@@ -123,7 +123,7 @@
     <div>🔵 KW — Keyword Shot</div>
     <div>💙 BL — Backlink Blast</div>
     <div>💚 CL — Content Laser</div>
-    <div>🧡 SCH — Schema Bomb</div>
+    <div>🧡 SCH — +2 Missiles</div>
     <div>❤️ RR — Rank Rocket</div>
     <br>
 
@@ -183,10 +183,20 @@ let transitionTimer = 0;
 let bossWarningTimer = 0;
 let gameOverTimer = 0;
 
-// Weapons: 'KW','BL','CL','SCH','RR'
+// Weapons: 'KW','BL','CL','RR'
 let weapon = 'KW';
 let weaponTimer = 0; // for time-limited power-ups
 let laserActive = false;
+
+// Missile stock
+let missiles = 3;
+const MAX_MISSILES = 5;
+let missileRegen = 0;
+const MISSILE_REGEN_FRAMES = 600; // ~10s at 60fps
+
+// Flash message
+let flashMsg = ''; let flashTimer = 0; let flashColor = '#fff';
+function showFlash(msg, color) { flashMsg = msg; flashTimer = 90; flashColor = color || '#fff'; }
 
 // ---- Input ----
 const keys = {};
@@ -323,6 +333,7 @@ const ENEMY_DEFS = {
 function initGame() {
   score = 0; lives = 3; currentLevel = 1; frameCount = 0;
   weapon = 'KW'; weaponTimer = 0;
+  missiles = 3; missileRegen = 0;
   bullets = []; enemyBullets = []; enemies = []; powerUps = [];
   explosions = []; particles = []; boss = null; bossActive = false;
   resetPlayer();
@@ -438,22 +449,21 @@ function handleShooting() {
 }
 
 function handleBomb() {
-  if (weapon !== 'SCH') return;
-  // Screen-clear bomb
-  createExplosion(BASE_W/2, BASE_H/2, 120, '#f80');
-  enemies.forEach(e => {
-    score += e.score;
-    spawnPowerUpChance(e.x, e.y);
-    createExplosion(e.x+e.w/2, e.y+e.h/2, 20, e.color);
+  if (gameState !== 'playing') return;
+  if (missiles <= 0) { showFlash('NO MISSILES!', '#f00'); return; }
+  missiles--;
+  missileRegen = 0;
+  bullets.push({
+    x: player.x + player.w/2 - 4,
+    y: player.y,
+    w: 8, h: 20,
+    vy: -14,
+    vx: 0,
+    color: '#f80',
+    label: '🚀',
+    missile: true,
+    damage: 30
   });
-  if (boss) {
-    boss.hp -= 20;
-    boss.hitFlash = 15;
-    if (boss.hp <= 0) killBoss();
-  }
-  enemies = [];
-  enemyBullets = [];
-  weapon = 'KW';
 }
 
 function getNearestEnemy() {
@@ -473,7 +483,7 @@ function getNearestEnemy() {
 const PU_TYPES = [
   { type:'BL', color:'#44f', label:'BL', name:'Backlink Blast' },
   { type:'CL', color:'#0f0', label:'CL', name:'Content Laser' },
-  { type:'SCH',color:'#f80', label:'SCH',name:'Schema Bomb' },
+  { type:'SCH',color:'#f80', label:'SCH',name:'+2 Missiles' },
   { type:'RR', color:'#f44', label:'RR', name:'Rank Rocket' },
   { type:'LIFE',color:'#f0f',label:'♥', name:'Extra Life' },
 ];
@@ -488,9 +498,13 @@ function handlePowerUp(pu) {
   if (pu.type === 'LIFE') {
     lives = Math.min(lives+1, 5);
     player.shield = lives;
+  } else if (pu.type === 'SCH') {
+    missiles = Math.min(missiles + 2, MAX_MISSILES);
+    missileRegen = 0;
+    showFlash('+2 MISSILES!', '#f80');
   } else {
     weapon = pu.type;
-    weaponTimer = pu.type === 'SCH' ? 1 : 600; // SCH is single-use, others last 10s
+    weaponTimer = 600;
   }
   createExplosion(pu.x, pu.y, 15, pu.color);
 }
@@ -540,6 +554,48 @@ function evaluateCollisions() {
       continue; // laser persists 1 frame
     }
     let hit = false;
+    // Missile: big explosion on first enemy hit, area damage
+    if (b.missile) {
+      let mHit = false;
+      for (let ei = enemies.length-1; ei >= 0; ei--) {
+        if (rectOverlap(b, enemies[ei])) {
+          const ex = enemies[ei].x + enemies[ei].w/2;
+          const ey = enemies[ei].y + enemies[ei].h/2;
+          createExplosion(ex, ey, 60, '#f80');
+          // area damage to all enemies within 80px
+          for (let ai = enemies.length-1; ai >= 0; ai--) {
+            const ae = enemies[ai];
+            const adx = (ae.x+ae.w/2) - ex;
+            const ady = (ae.y+ae.h/2) - ey;
+            if (Math.sqrt(adx*adx+ady*ady) <= 80) {
+              hitEnemy(ai, 30, b);
+            }
+          }
+          if (boss && bossActive) {
+            const bdx = (boss.x+boss.w/2) - ex;
+            const bdy = (boss.y+boss.h/2) - ey;
+            if (Math.sqrt(bdx*bdx+bdy*bdy) <= 80) {
+              boss.hp -= 15; boss.hitFlash = 10;
+              if (boss.hp <= 0) killBoss();
+            }
+          }
+          bullets.splice(bi, 1); mHit = true; hit = true; break;
+        }
+      }
+      if (!mHit && boss && bossActive && rectOverlap(b, boss)) {
+        createExplosion(boss.x+boss.w/2, boss.y+boss.h/2, 60, '#f80');
+        boss.hp -= 30; boss.hitFlash = 15;
+        if (boss.hp <= 0) killBoss();
+        bullets.splice(bi, 1); hit = true;
+      }
+      if (hit) continue;
+      // missile reached top off-screen — explode at top
+      if (b.y < -b.h) {
+        createExplosion(b.x + b.w/2, 0, 40, '#f80');
+        bullets.splice(bi, 1);
+      }
+      continue;
+    }
     for (let ei = enemies.length-1; ei >= 0; ei--) {
       if (rectOverlap(b, enemies[ei])) {
         hitEnemy(ei, b.weapon === 'CL' ? 0.3 : 1, b);
@@ -653,6 +709,12 @@ function updateGame() {
 
   // Weapon timer
   if (weaponTimer > 0) { weaponTimer--; if (weaponTimer === 0) weapon = 'KW'; }
+
+  // Missile regen
+  if (missiles < MAX_MISSILES) {
+    missileRegen++;
+    if (missileRegen >= MISSILE_REGEN_FRAMES) { missiles++; missileRegen = 0; }
+  }
 
   // Player movement
   const spd = player.speed;
@@ -1005,6 +1067,14 @@ function drawBullets() {
       grad.addColorStop(1, '#fff');
       ctx.fillStyle = grad;
       ctx.fillRect(b.x, 0, b.w, b.h);
+    } else if (b.missile) {
+      // Missile shape with flame trail
+      ctx.fillStyle = '#f80';
+      ctx.shadowColor = '#f80'; ctx.shadowBlur = 10;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.font = "12px serif"; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('🚀', b.x+b.w/2, b.y);
+      ctx.fillStyle = '#ff4'; ctx.fillRect(b.x+1, b.y+b.h, b.w-2, 4+Math.random()*3);
     } else if (b.weapon === 'RR') {
       // Rocket shape
       ctx.fillStyle = '#f80';
@@ -1296,8 +1366,8 @@ function drawHUD() {
   ctx.fillText(heartsStr, 6, 22);
 
   // Weapon indicator
-  const wColors = { KW:'#0ff', BL:'#44f', CL:'#0f0', SCH:'#f80', RR:'#f44' };
-  const wNames  = { KW:'KW SHOT', BL:'BACKLINK', CL:'C.LASER', SCH:'SCH BOMB', RR:'ROCKET' };
+  const wColors = { KW:'#0ff', BL:'#44f', CL:'#0f0', RR:'#f44' };
+  const wNames  = { KW:'KW SHOT', BL:'BACKLINK', CL:'C.LASER', RR:'ROCKET' };
   ctx.font = "6px 'Press Start 2P', monospace";
   ctx.fillStyle = wColors[weapon] || '#fff';
   ctx.shadowColor = wColors[weapon];
@@ -1322,6 +1392,18 @@ function drawHUD() {
   ctx.fillStyle = '#0ff'; ctx.font = "5px 'Press Start 2P', monospace";
   ctx.textAlign = 'left'; ctx.shadowBlur = 4; ctx.shadowColor = '#0ff';
   ctx.fillText(`LV${currentLevel}`, 6, 32);
+
+  // Missiles
+  ctx.fillStyle = '#f80'; ctx.shadowColor = '#f80'; ctx.shadowBlur = 4;
+  ctx.font = "6px 'Press Start 2P', monospace";
+  ctx.textAlign = 'left';
+  ctx.fillText('🚀 x' + missiles, 6, 44);
+  // Regen bar
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(6, 54, 60, 4);
+  ctx.fillStyle = '#f80';
+  ctx.fillRect(6, 54, 60 * (missileRegen / MISSILE_REGEN_FRAMES), 4);
 
   ctx.restore();
 }
@@ -1461,6 +1543,19 @@ function drawGame() {
   drawBullets();
   drawEnemyBullets();
   drawHUD();
+
+  // Flash message
+  if (flashTimer > 0) {
+    ctx.save();
+    ctx.globalAlpha = flashTimer / 90;
+    ctx.fillStyle = flashColor;
+    ctx.font = "10px 'Press Start 2P', monospace";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = flashColor; ctx.shadowBlur = 10;
+    ctx.fillText(flashMsg, BASE_W/2, BASE_H/2 - 40);
+    ctx.restore();
+    flashTimer--;
+  }
 
   if (gameState === 'levelTransition') drawLevelTransition();
   if (gameState === 'bossWarning') drawBossWarning();
