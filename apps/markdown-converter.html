@@ -116,6 +116,22 @@ a { color: var(--accent-light); text-decoration: none; }
 
 .char-count { font-size: 11px; color: var(--text3); }
 
+/* WYSIWYG toolbar */
+.format-bar {
+  display: flex; gap: 2px; padding: 6px 12px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+}
+.fmt-btn {
+  width: 30px; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text2); cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s;
+}
+.fmt-btn:hover { background: var(--surface2); border-color: var(--border); color: #fff; }
+.fmt-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fmt-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.fmt-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 3px 6px; font-size: 12px; cursor: pointer; }
+.fmt-select:focus { border-color: var(--accent); outline: none; }
+
 @media (max-width: 768px) {
   .main { grid-template-columns: 1fr; height: auto; }
   .pane { min-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
@@ -145,6 +161,29 @@ a { color: var(--accent-light); text-decoration: none; }
 <div class="main" id="rich-to-md-view">
   <div class="pane">
     <div class="pane-header"><span class="label">Rich Text Input</span><span class="char-count" id="rich-chars">0</span></div>
+    <div class="format-bar" id="format-bar">
+      <select class="fmt-select" id="fmt-block" title="Block format">
+        <option value="p">Paragraph</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+        <option value="blockquote">Quote</option>
+        <option value="pre">Code Block</option>
+      </select>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button class="fmt-btn" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button class="fmt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+      <button class="fmt-btn" data-cmd="code" title="Inline Code" style="font-family:monospace;font-size:12px;">&lt;/&gt;</button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-cmd="insertUnorderedList" title="Bullet List">•≡</button>
+      <button class="fmt-btn" data-cmd="insertOrderedList" title="Numbered List">1.</button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-cmd="createLink" title="Insert Link">🔗</button>
+      <button class="fmt-btn" data-cmd="insertHorizontalRule" title="Horizontal Rule">―</button>
+      <button class="fmt-btn" data-cmd="removeFormat" title="Clear Formatting">✕</button>
+    </div>
     <div class="pane-body">
       <div class="rich-editor" id="rich-input" contenteditable="true"></div>
     </div>
@@ -410,6 +449,74 @@ const mdOutput = document.getElementById('md-output');
 const mdInput = document.getElementById('md-input');
 const richPreview = document.getElementById('rich-preview');
 let debounce = null;
+
+// ── WYSIWYG toolbar ─────────────────────────────────────────────────────
+function execCmd(cmd, value = null) {
+  richInput.focus();
+  document.execCommand(cmd, false, value);
+  triggerConvert();
+}
+
+document.querySelectorAll('.fmt-btn[data-cmd]').forEach(btn => {
+  btn.addEventListener('mousedown', e => e.preventDefault()); // keep focus in editor
+  btn.addEventListener('click', () => {
+    const cmd = btn.dataset.cmd;
+    if (cmd === 'code') {
+      // Wrap selection in <code>
+      const sel = window.getSelection();
+      if (sel.rangeCount && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const code = document.createElement('code');
+        range.surroundContents(code);
+        triggerConvert();
+      }
+    } else if (cmd === 'createLink') {
+      const url = prompt('Enter URL:');
+      if (url) execCmd('createLink', url);
+    } else {
+      execCmd(cmd);
+    }
+  });
+});
+
+document.getElementById('fmt-block').addEventListener('change', e => {
+  const val = e.target.value;
+  richInput.focus();
+  if (val === 'pre') {
+    document.execCommand('formatBlock', false, 'pre');
+  } else if (val === 'blockquote') {
+    document.execCommand('formatBlock', false, 'blockquote');
+  } else {
+    document.execCommand('formatBlock', false, val);
+  }
+  triggerConvert();
+});
+
+// Update active state of format buttons
+richInput.addEventListener('keyup', updateFormatState);
+richInput.addEventListener('mouseup', updateFormatState);
+
+function updateFormatState() {
+  document.querySelectorAll('.fmt-btn[data-cmd]').forEach(btn => {
+    const cmd = btn.dataset.cmd;
+    if (['bold', 'italic', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'].includes(cmd)) {
+      btn.classList.toggle('active', document.queryCommandState(cmd));
+    }
+  });
+  // Update block dropdown
+  const block = document.queryCommandValue('formatBlock');
+  const sel = document.getElementById('fmt-block');
+  const match = [...sel.options].find(o => o.value.toLowerCase() === block.toLowerCase());
+  sel.value = match ? match.value : 'p';
+}
+
+function triggerConvert() {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    mdOutput.value = htmlToMarkdown(richInput);
+    updateCounts();
+  }, 100);
+}
 
 // Rich → MD
 richInput.addEventListener('input', () => {
