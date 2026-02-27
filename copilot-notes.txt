@@ -69,13 +69,32 @@ Deacyde/urlmap (private)
   APPS BUILT (single-file HTML)
 =====================================
 
-All in deacyde-site/apps/ and deacyde.com/apps/
+All in dev.deacyde repo at apps/ and deacyde.com repo at apps/
 
-  anomaly-detector.html  — GA4/GSC CSV anomaly detection
+  anomaly-detector.html   — GA4/GSC CSV anomaly detection
   csv-template-maker.html — SEO CSV template generator
-  noter.html             — SQLite (sql.js) note-taking app
-  url-map.html           — browser-only URL/keyword map (sql.js)
-  apps/urlmap/           — PHP + SQLite version (multi-user, GoDaddy)
+  noter.html              — SQLite (sql.js) note-taking app
+  url-map.html            — browser-only URL/keyword map (sql.js)
+  apps/urlmap/            — PHP + SQLite version (multi-user, GoDaddy only)
+
+
+=====================================
+  OTHER APPS (Non-SEO section)
+=====================================
+
+  apps/minecraft-build-studio/
+    → React + TypeScript + Three.js + Vite app (built, committed as dist/)
+    → 10 sections: voxel editor, schematic viewer, blueprint gen,
+      material calc, cost estimator, palette suggester, structure gen,
+      floor plan gen, style transfer, library
+    → SQLite via sql.js (loaded from CDN script tag, NOT bundled by Vite)
+    → Persisted to IndexedDB via idb package
+    → Source at: /tmp/minecraft-build-studio/
+    → IMPORTANT: sql.js loaded via window.initSqlJs (CDN script tag in
+      index.html). Do NOT import sql.js via npm in database.ts.
+      CDN: cdn.jsdelivr.net/npm/sql.js@1.14.0/dist/sql-wasm-browser.js
+    → To update: edit source in /tmp/minecraft-build-studio/src/,
+      run npm run build, copy dist/* to apps/minecraft-build-studio/
 
 
 =====================================
