@@ -168,6 +168,8 @@ a { color: var(--accent-light); text-decoration: none; }
         <option value="h2">Heading 2</option>
         <option value="h3">Heading 3</option>
         <option value="h4">Heading 4</option>
+        <option value="h5">Heading 5</option>
+        <option value="h6">Heading 6</option>
         <option value="blockquote">Quote</option>
         <option value="pre">Code Block</option>
       </select>
@@ -182,6 +184,7 @@ a { color: var(--accent-light); text-decoration: none; }
       <div class="fmt-sep"></div>
       <button class="fmt-btn" data-cmd="createLink" title="Insert Link">🔗</button>
       <button class="fmt-btn" data-cmd="insertHorizontalRule" title="Horizontal Rule">―</button>
+      <button class="fmt-btn" data-cmd="insertTable" title="Insert Table">⊞</button>
       <button class="fmt-btn" data-cmd="removeFormat" title="Clear Formatting">✕</button>
     </div>
     <div class="pane-body">
@@ -473,6 +476,22 @@ document.querySelectorAll('.fmt-btn[data-cmd]').forEach(btn => {
     } else if (cmd === 'createLink') {
       const url = prompt('Enter URL:');
       if (url) execCmd('createLink', url);
+    } else if (cmd === 'insertTable') {
+      const size = prompt('Table size (rows x cols):', '3x3');
+      if (!size) return;
+      const [rows, cols] = size.split(/[x×,]/).map(n => Math.min(20, Math.max(1, parseInt(n) || 3)));
+      let html = '<table><thead><tr>';
+      for (let c = 0; c < cols; c++) html += `<th>Header ${c+1}</th>`;
+      html += '</tr></thead><tbody>';
+      for (let r = 0; r < rows - 1; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) html += '<td>&nbsp;</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table><p><br></p>';
+      richInput.focus();
+      document.execCommand('insertHTML', false, html);
+      triggerConvert();
     } else {
       execCmd(cmd);
     }
