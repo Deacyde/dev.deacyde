@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rich Text ↔ Markdown Converter</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0d0d; --surface: #1a1a1a; --surface2: #242424; --border: #333;
+  --accent: #7c3aed; --accent-light: #a78bfa; --text: #e8e8e8; --text2: #aaa; --text3: #666;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--accent-light); text-decoration: none; }
+
+.topbar {
+  display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.topbar h1 { font-size: 16px; font-weight: 600; flex: 1; }
+.back-link { font-size: 13px; color: var(--text3); }
+.back-link:hover { color: var(--text); }
+
+.btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text); cursor: pointer; font-size: 13px; transition: all .15s; }
+.btn:hover { border-color: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #6d28d9; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+.toolbar {
+  display: flex; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface); flex-wrap: wrap; align-items: center;
+}
+.toolbar .sep { width: 1px; height: 20px; background: var(--border); }
+.mode-tabs { display: flex; gap: 0; }
+.mode-tab { padding: 6px 16px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; font-size: 13px; transition: all .15s; }
+.mode-tab:first-child { border-radius: 6px 0 0 6px; }
+.mode-tab:last-child { border-radius: 0 6px 6px 0; }
+.mode-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mode-tab + .mode-tab { border-left: 0; }
+
+.main {
+  display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 95px);
+}
+.main.single { grid-template-columns: 1fr; }
+.pane { display: flex; flex-direction: column; border-right: 1px solid var(--border); min-width: 0; }
+.pane:last-child { border-right: none; }
+.pane-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text2);
+}
+.pane-header .label { flex: 1; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.pane-body { flex: 1; overflow: auto; position: relative; }
+
+/* Rich text editor */
+.rich-editor {
+  min-height: 100%; padding: 20px; outline: none; font-size: 14px; line-height: 1.7;
+  color: var(--text); word-wrap: break-word; overflow-wrap: break-word;
+}
+.rich-editor:empty::before {
+  content: 'Paste or type rich text here…'; color: var(--text3);
+}
+.rich-editor h1, .rich-editor h2, .rich-editor h3 { margin: 0.8em 0 0.4em; color: #fff; }
+.rich-editor h1 { font-size: 1.6em; }
+.rich-editor h2 { font-size: 1.3em; }
+.rich-editor h3 { font-size: 1.1em; }
+.rich-editor p { margin: 0.4em 0; }
+.rich-editor ul, .rich-editor ol { padding-left: 1.5em; margin: 0.4em 0; }
+.rich-editor li { margin: 0.2em 0; }
+.rich-editor code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; color: var(--accent-light); }
+.rich-editor pre { background: var(--surface2); padding: 12px 16px; border-radius: 8px; overflow-x: auto; margin: 0.6em 0; }
+.rich-editor pre code { background: none; padding: 0; }
+.rich-editor blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text2); margin: 0.6em 0; }
+.rich-editor a { color: var(--accent-light); text-decoration: underline; }
+.rich-editor strong { color: #fff; }
+.rich-editor table { border-collapse: collapse; margin: 0.6em 0; width: 100%; }
+.rich-editor th, .rich-editor td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 13px; }
+.rich-editor th { background: var(--surface2); color: #fff; }
+.rich-editor img { max-width: 100%; border-radius: 6px; }
+.rich-editor hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+
+/* Markdown editor */
+.md-editor {
+  width: 100%; height: 100%; padding: 20px; border: none; outline: none; resize: none;
+  font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 13px; line-height: 1.7;
+  background: transparent; color: var(--text); tab-size: 2;
+  word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;
+}
+.md-editor::placeholder { color: var(--text3); }
+
+/* Preview pane */
+.preview {
+  padding: 20px; font-size: 14px; line-height: 1.7; word-wrap: break-word; overflow-wrap: break-word;
+}
+.preview h1, .preview h2, .preview h3 { margin: 0.8em 0 0.4em; color: #fff; }
+.preview h1 { font-size: 1.6em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.3em; }
+.preview p { margin: 0.4em 0; }
+.preview ul, .preview ol { padding-left: 1.5em; margin: 0.4em 0; }
+.preview code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; color: var(--accent-light); }
+.preview pre { background: var(--surface2); padding: 12px 16px; border-radius: 8px; overflow-x: auto; margin: 0.6em 0; white-space: pre-wrap; }
+.preview pre code { background: none; padding: 0; }
+.preview blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text2); margin: 0.6em 0; }
+.preview strong { color: #fff; }
+.preview table { border-collapse: collapse; margin: 0.6em 0; width: 100%; }
+.preview th, .preview td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 13px; }
+.preview th { background: var(--surface2); color: #fff; }
+.preview hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+
+.copy-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff; padding: 8px 20px; border-radius: 8px;
+  font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 100;
+}
+.copy-toast.show { opacity: 1; }
+
+.char-count { font-size: 11px; color: var(--text3); }
+
+@media (max-width: 768px) {
+  .main { grid-template-columns: 1fr; height: auto; }
+  .pane { min-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="back-link">← Back</a>
+  <h1>📝 Rich Text ↔ Markdown</h1>
+</div>
+
+<div class="toolbar">
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="rich-to-md">Rich → MD</div>
+    <div class="mode-tab" data-mode="md-to-rich">MD → Rich</div>
+  </div>
+  <div class="sep"></div>
+  <button class="btn btn-sm" id="copy-btn">📋 Copy Output</button>
+  <button class="btn btn-sm" id="clear-btn">🗑 Clear</button>
+  <div style="flex:1"></div>
+  <span class="char-count" id="char-count">0 chars</span>
+</div>
+
+<!-- Rich → Markdown mode -->
+<div class="main" id="rich-to-md-view">
+  <div class="pane">
+    <div class="pane-header"><span class="label">Rich Text Input</span><span class="char-count" id="rich-chars">0</span></div>
+    <div class="pane-body">
+      <div class="rich-editor" id="rich-input" contenteditable="true"></div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-header"><span class="label">Markdown Output</span><span class="char-count" id="md-out-chars">0</span></div>
+    <div class="pane-body">
+      <textarea class="md-editor" id="md-output" readonly placeholder="Markdown will appear here…"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Markdown → Rich mode -->
+<div class="main" id="md-to-rich-view" style="display:none">
+  <div class="pane">
+    <div class="pane-header"><span class="label">Markdown Input</span><span class="char-count" id="md-chars">0</span></div>
+    <div class="pane-body">
+      <textarea class="md-editor" id="md-input" placeholder="Paste or type markdown here…"></textarea>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-header"><span class="label">Rich Text Preview</span></div>
+    <div class="pane-body">
+      <div class="preview" id="rich-preview"></div>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="toast">Copied!</div>
+
+<script>
+'use strict';
+
+let mode = 'rich-to-md';
+
+// Mode switching
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    mode = tab.dataset.mode;
+    document.getElementById('rich-to-md-view').style.display = mode === 'rich-to-md' ? '' : 'none';
+    document.getElementById('md-to-rich-view').style.display = mode === 'md-to-rich' ? '' : 'none';
+  });
+});
+
+// ── Rich Text → Markdown conversion ──────────────────────────────────────
+
+function htmlToMarkdown(el) {
+  let md = '';
+  for (const node of el.childNodes) {
+    md += nodeToMd(node);
+  }
+  // Clean up excessive newlines
+  md = md.replace(/\n{3,}/g, '\n\n').trim();
+  return md;
+}
+
+function nodeToMd(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+  const tag = node.tagName.toLowerCase();
+  const inner = () => {
+    let s = '';
+    for (const c of node.childNodes) s += nodeToMd(c);
+    return s;
+  };
+
+  switch (tag) {
+    case 'h1': return `# ${inner().trim()}\n\n`;
+    case 'h2': return `## ${inner().trim()}\n\n`;
+    case 'h3': return `### ${inner().trim()}\n\n`;
+    case 'h4': return `#### ${inner().trim()}\n\n`;
+    case 'h5': return `##### ${inner().trim()}\n\n`;
+    case 'h6': return `###### ${inner().trim()}\n\n`;
+    case 'p': return `${inner().trim()}\n\n`;
+    case 'br': return '\n';
+    case 'hr': return '\n---\n\n';
+    case 'strong': case 'b': return `**${inner()}**`;
+    case 'em': case 'i': return `*${inner()}*`;
+    case 's': case 'del': case 'strike': return `~~${inner()}~~`;
+    case 'code':
+      if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'pre') return inner();
+      return `\`${inner()}\``;
+    case 'pre': {
+      const code = node.querySelector('code');
+      const text = code ? code.textContent : node.textContent;
+      const lang = code?.className?.match(/language-(\w+)/)?.[1] || '';
+      return `\n\`\`\`${lang}\n${text.trim()}\n\`\`\`\n\n`;
+    }
+    case 'blockquote': {
+      const lines = inner().trim().split('\n');
+      return lines.map(l => `> ${l}`).join('\n') + '\n\n';
+    }
+    case 'a': {
+      const href = node.getAttribute('href') || '';
+      const text = inner();
+      return href ? `[${text}](${href})` : text;
+    }
+    case 'img': {
+      const src = node.getAttribute('src') || '';
+      const alt = node.getAttribute('alt') || '';
+      return `![${alt}](${src})`;
+    }
+    case 'ul': return convertList(node, false) + '\n';
+    case 'ol': return convertList(node, true) + '\n';
+    case 'li': return inner().trim();
+    case 'table': return convertTable(node) + '\n';
+    case 'div': case 'section': case 'article': case 'main': case 'span': case 'font':
+      return inner();
+    default: return inner();
+  }
+}
+
+function convertList(ul, ordered, depth = 0) {
+  let md = '';
+  const indent = '  '.repeat(depth);
+  let idx = 1;
+  for (const li of ul.children) {
+    if (li.tagName.toLowerCase() !== 'li') continue;
+    const bullet = ordered ? `${idx++}.` : '-';
+    let text = '';
+    let sublist = '';
+    for (const c of li.childNodes) {
+      const tag = c.tagName?.toLowerCase();
+      if (tag === 'ul') sublist += convertList(c, false, depth + 1);
+      else if (tag === 'ol') sublist += convertList(c, true, depth + 1);
+      else text += nodeToMd(c);
+    }
+    md += `${indent}${bullet} ${text.trim()}\n`;
+    if (sublist) md += sublist;
+  }
+  return md;
+}
+
+function convertTable(table) {
+  const rows = [];
+  for (const tr of table.querySelectorAll('tr')) {
+    const cells = [];
+    for (const cell of tr.querySelectorAll('th, td')) {
+      cells.push(cell.textContent.trim().replace(/\|/g, '\\|'));
+    }
+    rows.push(cells);
+  }
+  if (rows.length === 0) return '';
+
+  let md = '| ' + rows[0].join(' | ') + ' |\n';
+  md += '| ' + rows[0].map(() => '---').join(' | ') + ' |\n';
+  for (let i = 1; i < rows.length; i++) {
+    md += '| ' + rows[i].join(' | ') + ' |\n';
+  }
+  return md;
+}
+
+// ── Markdown → HTML conversion ───────────────────────────────────────────
+
+function markdownToHtml(md) {
+  let html = md;
+
+  // Code blocks first (protect from other transforms)
+  const codeBlocks = [];
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre><code class="language-${lang}">${esc(code.trim())}</code></pre>`);
+    return `%%CODEBLOCK_${idx}%%`;
+  });
+
+  // Inline code (protect)
+  const inlineCodes = [];
+  html = html.replace(/`([^`\n]+)`/g, (_, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code>${esc(code)}</code>`);
+    return `%%INLINE_${idx}%%`;
+  });
+
+  // Headers
+  html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+  html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+  html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, '<hr>');
+
+  // Blockquotes
+  html = html.replace(/^>\s?(.*)$/gm, '<blockquote>$1</blockquote>');
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[\s:|-]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, sep, body) => {
+    const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+    const rows = body.trim().split('\n').map(row => {
+      const tds = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+
+  // Lists
+  html = convertMdLists(html);
+
+  // Bold & italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  // Links and images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Paragraphs — wrap remaining bare text lines
+  html = html.split('\n\n').map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (/^<(h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|pre|blockquote|hr|div|p)/.test(block)) return block;
+    return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+
+  // Restore code blocks
+  codeBlocks.forEach((code, i) => { html = html.replace(`%%CODEBLOCK_${i}%%`, code); });
+  inlineCodes.forEach((code, i) => { html = html.replace(`%%INLINE_${i}%%`, code); });
+
+  return html;
+}
+
+function convertMdLists(text) {
+  // Process unordered lists
+  text = text.replace(/((?:^[\t ]*[-*+]\s+.+$\n?)+)/gm, (match) => {
+    return buildListHtml(match.trim().split('\n'), false);
+  });
+  // Process ordered lists
+  text = text.replace(/((?:^[\t ]*\d+\.\s+.+$\n?)+)/gm, (match) => {
+    return buildListHtml(match.trim().split('\n'), true);
+  });
+  return text;
+}
+
+function buildListHtml(lines, ordered) {
+  const tag = ordered ? 'ol' : 'ul';
+  let html = `<${tag}>`;
+  for (const line of lines) {
+    const content = line.replace(/^[\t ]*(?:[-*+]|\d+\.)\s+/, '');
+    html += `<li>${content}</li>`;
+  }
+  html += `</${tag}>`;
+  return html;
+}
+
+function esc(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Event handlers ───────────────────────────────────────────────────────
+
+const richInput = document.getElementById('rich-input');
+const mdOutput = document.getElementById('md-output');
+const mdInput = document.getElementById('md-input');
+const richPreview = document.getElementById('rich-preview');
+let debounce = null;
+
+// Rich → MD
+richInput.addEventListener('input', () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    const md = htmlToMarkdown(richInput);
+    mdOutput.value = md;
+    updateCounts();
+  }, 150);
+});
+
+richInput.addEventListener('paste', (e) => {
+  // Allow paste to happen naturally, then convert
+  setTimeout(() => {
+    const md = htmlToMarkdown(richInput);
+    mdOutput.value = md;
+    updateCounts();
+  }, 50);
+});
+
+// MD → Rich
+mdInput.addEventListener('input', () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    richPreview.innerHTML = markdownToHtml(mdInput.value);
+    updateCounts();
+  }, 150);
+});
+
+// Copy
+document.getElementById('copy-btn').addEventListener('click', () => {
+  let text = '';
+  if (mode === 'rich-to-md') {
+    text = mdOutput.value;
+  } else {
+    text = mdInput.value;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1500);
+  });
+});
+
+// Clear
+document.getElementById('clear-btn').addEventListener('click', () => {
+  richInput.innerHTML = '';
+  mdOutput.value = '';
+  mdInput.value = '';
+  richPreview.innerHTML = '';
+  updateCounts();
+});
+
+function updateCounts() {
+  const rc = richInput.textContent.length;
+  const mo = mdOutput.value.length;
+  const mc = mdInput.value.length;
+  document.getElementById('rich-chars').textContent = rc + ' chars';
+  document.getElementById('md-out-chars').textContent = mo + ' chars';
+  document.getElementById('md-chars').textContent = mc + ' chars';
+  document.getElementById('char-count').textContent = (mode === 'rich-to-md' ? mo : mc) + ' chars';
+}
+</script>
+</body>
+</html>
