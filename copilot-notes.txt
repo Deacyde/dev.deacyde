@@ -84,6 +84,7 @@ All in dev.deacyde repo at apps/ and deacyde.com repo at apps/
 
   apps/minecraft-build-studio/
     → React + TypeScript + Three.js + Vite app (built, committed as dist/)
+    → Current version: v1.0.10
     → 10 sections: voxel editor, schematic viewer, blueprint gen,
       material calc, cost estimator, palette suggester, structure gen,
       floor plan gen, style transfer, library
@@ -93,8 +94,14 @@ All in dev.deacyde repo at apps/ and deacyde.com repo at apps/
     → IMPORTANT: sql.js loaded via window.initSqlJs (CDN script tag in
       index.html). Do NOT import sql.js via npm in database.ts.
       CDN: cdn.jsdelivr.net/npm/sql.js@1.14.0/dist/sql-wasm-browser.js
+    → DB API: runSQL(sql) uses db.exec() for INSERT/UPDATE/DELETE
+              execQuery(sql) uses db.prepare()+stmt.getAsObject() for SELECT
+              schema init uses db.exec() (supports multi-statement)
+              esc(val) function escapes values into SQL strings (no param binding)
     → To update: edit source in /tmp/minecraft-build-studio/src/,
-      run npm run build, copy dist/* to apps/minecraft-build-studio/
+      bump version in package.json AND Sidebar.tsx,
+      run npm run build, copy dist/* to apps/minecraft-build-studio/,
+      push to BOTH main AND production branches
 
 
 =====================================
