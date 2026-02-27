@@ -114,6 +114,19 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 .copy-toast.show { opacity: 1; }
 
+/* Export dropdown */
+.export-wrap { position: relative; }
+.export-menu {
+  display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  min-width: 180px; padding: 4px 0; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.export-menu.open { display: block; }
+.export-opt {
+  padding: 8px 14px; font-size: 13px; color: var(--text); cursor: pointer; transition: background .15s;
+}
+.export-opt:hover { background: var(--accent); color: #fff; }
+
 .char-count { font-size: 11px; color: var(--text3); }
 
 /* WYSIWYG toolbar */
@@ -153,6 +166,16 @@ a { color: var(--accent-light); text-decoration: none; }
   </div>
   <div class="sep"></div>
   <button class="btn btn-sm" id="copy-btn">📋 Copy Output</button>
+  <div class="export-wrap">
+    <button class="btn btn-sm" id="export-btn">📥 Export ▾</button>
+    <div class="export-menu" id="export-menu">
+      <div class="export-opt" data-fmt="md">.md — Markdown</div>
+      <div class="export-opt" data-fmt="txt">.txt — Plain Text</div>
+      <div class="export-opt" data-fmt="html">.html — HTML</div>
+      <div class="export-opt" data-fmt="pdf">.pdf — PDF</div>
+      <div class="export-opt" data-fmt="docx">.docx — Word</div>
+    </div>
+  </div>
   <button class="btn btn-sm" id="clear-btn">🗑 Clear</button>
   <div style="flex:1"></div>
   <span class="char-count" id="char-count">0 chars</span>
@@ -621,6 +644,103 @@ function updateCounts() {
   document.getElementById('md-chars').textContent = mc + ' chars';
   document.getElementById('char-count').textContent = (mode === 'rich-to-md' ? mo : mc) + ' chars';
 }
+
+/* ─── Export ─── */
+const exportBtn = document.getElementById('export-btn');
+const exportMenu = document.getElementById('export-menu');
+
+exportBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  exportMenu.classList.toggle('open');
+});
+document.addEventListener('click', () => exportMenu.classList.remove('open'));
+
+function getExportContent() {
+  if (mode === 'rich-to-md') {
+    return { md: mdOutput.value, html: richInput.innerHTML, text: richInput.textContent };
+  } else {
+    return { md: mdInput.value, html: richPreview.innerHTML, text: richPreview.textContent };
+  }
+}
+
+function downloadFile(name, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Exported ' + name);
+}
+
+function exportPdf(htmlContent) {
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Export</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; line-height: 1.6; }
+h1,h2,h3,h4,h5,h6 { margin: 1em 0 .4em; }
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: .9em; }
+pre { background: #f5f5f5; padding: 12px 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 3px solid #7c3aed; padding-left: 12px; color: #555; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #f5f5f5; }
+img { max-width: 100%; }
+@media print { body { margin: 0; } }
+</style></head><body>${htmlContent}</body></html>`);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 400);
+}
+
+function exportDocx(htmlContent) {
+  const docHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><style>
+body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.5; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #999; padding: 6px 10px; }
+th { background: #f0f0f0; }
+code { font-family: Consolas, monospace; background: #f5f5f5; padding: 1px 4px; }
+pre { background: #f5f5f5; padding: 10px; font-family: Consolas, monospace; }
+blockquote { border-left: 3px solid #7c3aed; padding-left: 10px; color: #555; }
+</style></head><body>${htmlContent}</body></html>`;
+  const blob = new Blob([docHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'export.docx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Exported export.docx');
+}
+
+document.querySelectorAll('.export-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    exportMenu.classList.remove('open');
+    const fmt = opt.dataset.fmt;
+    const c = getExportContent();
+    switch (fmt) {
+      case 'md':
+        downloadFile('export.md', c.md, 'text/markdown');
+        break;
+      case 'txt':
+        downloadFile('export.txt', c.text, 'text/plain');
+        break;
+      case 'html':
+        downloadFile('export.html',
+          `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Export</title></head><body>${c.html}</body></html>`,
+          'text/html');
+        break;
+      case 'pdf':
+        exportPdf(c.html);
+        break;
+      case 'docx':
+        exportDocx(c.html);
+        break;
+    }
+  });
+});
 </script>
 </body>
 </html>
