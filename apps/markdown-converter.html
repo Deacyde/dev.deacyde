@@ -167,6 +167,15 @@ a { color: var(--accent-light); text-decoration: none; }
   <div class="sep"></div>
   <button class="btn btn-sm" id="copy-btn">📋 Copy Output</button>
   <div class="export-wrap">
+    <button class="btn btn-sm" id="import-btn">📂 Import ▾</button>
+    <div class="export-menu" id="import-menu">
+      <div class="export-opt" data-import="md">.md — Markdown</div>
+      <div class="export-opt" data-import="txt">.txt — Plain Text</div>
+      <div class="export-opt" data-import="html">.html — HTML</div>
+      <div class="export-opt" data-import="docx">.docx — Word</div>
+    </div>
+  </div>
+  <div class="export-wrap">
     <button class="btn btn-sm" id="export-btn">📥 Export ▾</button>
     <div class="export-menu" id="export-menu">
       <div class="export-opt" data-fmt="md">.md — Markdown</div>
@@ -652,8 +661,9 @@ const exportMenu = document.getElementById('export-menu');
 exportBtn.addEventListener('click', e => {
   e.stopPropagation();
   exportMenu.classList.toggle('open');
+  importMenu.classList.remove('open');
 });
-document.addEventListener('click', () => exportMenu.classList.remove('open'));
+document.addEventListener('click', () => { exportMenu.classList.remove('open'); importMenu.classList.remove('open'); });
 
 function getExportContent() {
   if (mode === 'rich-to-md') {
@@ -741,6 +751,83 @@ document.querySelectorAll('.export-opt').forEach(opt => {
     }
   });
 });
+
+/* ─── Import ─── */
+const importBtn = document.getElementById('import-btn');
+const importMenu = document.getElementById('import-menu');
+const importFile = document.createElement('input');
+importFile.type = 'file';
+importFile.style.display = 'none';
+document.body.appendChild(importFile);
+
+importBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  importMenu.classList.toggle('open');
+  exportMenu.classList.remove('open');
+});
+document.addEventListener('click', () => importMenu.classList.remove('open'));
+
+let pendingImportFmt = null;
+
+document.querySelectorAll('.export-opt[data-import]').forEach(opt => {
+  opt.addEventListener('click', () => {
+    importMenu.classList.remove('open');
+    pendingImportFmt = opt.dataset.import;
+    const accept = { md: '.md,.markdown', txt: '.txt', html: '.html,.htm', docx: '.docx' }[pendingImportFmt] || '*';
+    importFile.accept = accept;
+    importFile.click();
+  });
+});
+
+importFile.addEventListener('change', () => {
+  const file = importFile.files[0];
+  if (!file) return;
+  const fmt = pendingImportFmt;
+
+  if (fmt === 'docx') {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const html = parseDocxHtml(reader.result);
+      loadImportedContent(html, 'html');
+    };
+    reader.readAsText(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = () => loadImportedContent(reader.result, fmt);
+    reader.readAsText(file);
+  }
+  importFile.value = '';
+});
+
+function loadImportedContent(content, fmt) {
+  if (fmt === 'md' || fmt === 'txt') {
+    if (mode !== 'md-to-rich') {
+      document.querySelector('.mode-tab[data-mode="md-to-rich"]').click();
+    }
+    mdInput.value = content;
+    richPreview.innerHTML = markdownToHtml(content);
+    updateCounts();
+    toast('Imported — loaded into Markdown pane');
+  } else if (fmt === 'html') {
+    if (mode !== 'rich-to-md') {
+      document.querySelector('.mode-tab[data-mode="rich-to-md"]').click();
+    }
+    const tmp = document.createElement('div');
+    tmp.innerHTML = content;
+    const body = tmp.querySelector('body');
+    richInput.innerHTML = body ? body.innerHTML : content;
+    mdOutput.value = htmlToMarkdown(richInput);
+    updateCounts();
+    toast('Imported — loaded into Rich Text pane');
+  }
+}
+
+function parseDocxHtml(raw) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = raw;
+  const body = tmp.querySelector('body');
+  return body ? body.innerHTML : raw;
+}
 </script>
 </body>
 </html>
