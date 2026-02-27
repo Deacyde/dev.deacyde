@@ -1,0 +1,21 @@
+You are an expert Minecraft builder. Create a complete, step-by-step building plan for a survival-friendly Minecraft house.
+
+Requirements:
+
+Style: medieval survival starter house
+
+Footprint: 11x9 blocks
+
+Height: no taller than 8 blocks
+
+Must be fully survival-buildable (no creative-only blocks)
+
+Include exact block counts
+
+Include layer-by-layer build instructions
+
+Include front door, windows, roof, and simple interior
+
+Prioritize early-game materials (oak, cobblestone, glass)
+
+Design should loo
