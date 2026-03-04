@@ -23,7 +23,9 @@ async function handleRequest(request) {
     })
 
     const contents = await response.text()
-    return new Response(JSON.stringify({ contents, status: response.status }), {
+    const headers = {}
+    response.headers.forEach((value, key) => { headers[key] = value })
+    return new Response(JSON.stringify({ contents, status: response.status, headers }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     })
   } catch (e) {
