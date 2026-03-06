@@ -363,7 +363,7 @@
                         <div class="msg-bubble">
                             Describe anything you want to 3D print on your <strong>Bambu Lab X1C</strong>.<br><br>
                             <strong>⚙️ CAD mode</strong> — precise mechanical parts: gears, brackets, enclosures, threads<br>
-                            <strong>✨ AI Mesh</strong> — real 3D mesh of anything: cars, characters, organic shapes (needs <a href="https://meshy.ai" target="_blank" style="color:var(--accent)">Meshy.ai</a> key)<br>
+                            <strong>✨ AI Mesh</strong> — real 3D mesh of anything: cars, characters, organic shapes (needs <a href="https://platform.tripo3d.ai" target="_blank" style="color:var(--accent)">Tripo3D</a> or <a href="https://meshy.ai" target="_blank" style="color:var(--accent)">Meshy</a> key)<br>
                             <strong>🖼️ Image→3D</strong> — generates a photo first (DALL-E), then converts to 3D (needs OpenAI + Meshy keys)
                         </div>
                     </div>
@@ -372,8 +372,8 @@
                     <!-- Mode toggle -->
                     <div class="mode-toggle" id="modeToggle">
                         <button class="mode-btn active" data-mode="cad" title="Generate precise mechanical parts using JSCAD CSG">⚙️ CAD</button>
-                        <button class="mode-btn" data-mode="mesh-text" title="AI generates a full 3D mesh from your text (Meshy.ai)">✨ AI Mesh</button>
-                        <button class="mode-btn" data-mode="mesh-image" title="Generate an image first, then convert to 3D (DALL-E + Meshy.ai)">🖼️ Image→3D</button>
+                        <button class="mode-btn" data-mode="mesh-text" title="AI generates a full 3D mesh from your text (Tripo3D / Meshy.ai)">✨ AI Mesh</button>
+                        <button class="mode-btn" data-mode="mesh-image" title="Generate an image first, then convert to 3D (DALL-E + Tripo3D / Meshy)">🖼️ Image→3D</button>
                     </div>
                     <!-- AI image preview (shown in mesh-image mode after DALL-E generates) -->
                     <div class="ai-image-preview" id="aiImagePreview">
@@ -489,14 +489,28 @@
             <input type="text" id="key-custom-model" placeholder="e.g. mistral-large, llama3, deepseek-r1">
         </div>
 
-        <div class="section-label" style="margin-top:1.2rem; border-top: 1px solid var(--border); padding-top: 1rem;">✨ AI Mesh Generation (Meshy.ai)</div>
+        <div class="section-label" style="margin-top:1.2rem; border-top: 1px solid var(--border); padding-top: 1rem;">✨ AI Mesh Generation — Choose Provider</div>
         <div class="field">
-            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.4rem;">
-                Meshy.ai generates <strong>real 3D mesh models</strong> from text or images — cars, characters, organic shapes, anything.<br>
-                Free tier: 200 credits/month. Get your key at <a href="https://www.meshy.ai" target="_blank" style="color:var(--accent)">meshy.ai</a>
+            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.6rem;">
+                Both providers generate <strong>real 3D mesh models</strong> from text or images.<br>
+                The app will use whichever key you fill in — if both are set, Tripo3D is used first.
             </label>
-            <label><span class="dot" id="dot-meshy"></span> Meshy API Key</label>
-            <input type="password" id="key-meshy" placeholder="msy_..." autocomplete="off">
+
+            <div style="background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:0.8rem;">
+                <div style="font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">⭐ Tripo3D <span style="font-weight:400; color:var(--accent); font-size:0.75rem;">Free monthly credits</span></div>
+                <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.5rem;">Get free credits every month just by signing up — no credit card needed.<br>
+                Get your key at <a href="https://platform.tripo3d.ai" target="_blank" style="color:var(--accent)">platform.tripo3d.ai</a></div>
+                <label><span class="dot" id="dot-tripo3d"></span> Tripo3D API Key</label>
+                <input type="password" id="key-tripo3d" placeholder="tsk_..." autocomplete="off">
+            </div>
+
+            <div style="background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:0.7rem 0.9rem;">
+                <div style="font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Meshy.ai <span style="font-weight:400; color:var(--muted); font-size:0.75rem;">$20/mo or pay-per-credit</span></div>
+                <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.5rem;">Higher quality results, PBR textures.
+                Get your key at <a href="https://www.meshy.ai" target="_blank" style="color:var(--accent)">meshy.ai</a></div>
+                <label><span class="dot" id="dot-meshy"></span> Meshy API Key</label>
+                <input type="password" id="key-meshy" placeholder="msy_..." autocomplete="off">
+            </div>
         </div>
 
         <div class="modal-footer">
@@ -1244,6 +1258,7 @@ function openSettings() {
     document.getElementById('key-custom-url').value   = k['custom-url']   || '';
     document.getElementById('key-custom-key').value   = k['custom-key']   || '';
     document.getElementById('key-custom-model').value = k['custom-model'] || '';
+    document.getElementById('key-tripo3d').value      = k['tripo3d']      || '';
     document.getElementById('key-meshy').value        = k['meshy']        || '';
     refreshDots(k);
     document.getElementById('settingsOverlay').classList.add('open');
@@ -1257,6 +1272,7 @@ function saveSettings() {
         'custom-url':  document.getElementById('key-custom-url').value.trim(),
         'custom-key':  document.getElementById('key-custom-key').value.trim(),
         'custom-model':document.getElementById('key-custom-model').value.trim(),
+        tripo3d:       document.getElementById('key-tripo3d').value.trim(),
         meshy:         document.getElementById('key-meshy').value.trim()
     };
     saveKeys(k);
@@ -1270,8 +1286,9 @@ function refreshDots(k) {
     ['openai','gemini','groq'].forEach(id => {
         document.getElementById(`dot-${id}`).className = 'dot' + (k[id] ? ' set' : '');
     });
-    document.getElementById('dot-custom').className = 'dot' + (k['custom-key'] ? ' set' : '');
-    document.getElementById('dot-meshy').className  = 'dot' + (k['meshy'] ? ' set' : '');
+    document.getElementById('dot-custom').className   = 'dot' + (k['custom-key'] ? ' set' : '');
+    document.getElementById('dot-tripo3d').className  = 'dot' + (k['tripo3d'] ? ' set' : '');
+    document.getElementById('dot-meshy').className    = 'dot' + (k['meshy'] ? ' set' : '');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1281,10 +1298,19 @@ let currentMode = 'cad'; // 'cad' | 'mesh-text' | 'mesh-image'
 
 async function generateWithMeshy(prompt, mode) {
     const keys = loadKeys();
-    const meshyKey = keys.meshy;
-    if (!meshyKey) throw new Error('No Meshy API key — click ⚙️ to add one. Get a free key at meshy.ai');
 
-    let taskId, pollAction;
+    // Pick provider: Tripo3D first (free credits), fall back to Meshy
+    let provider, apiKey;
+    if (keys.tripo3d) {
+        provider = 'tripo3d'; apiKey = keys.tripo3d;
+    } else if (keys.meshy) {
+        provider = 'meshy'; apiKey = keys.meshy;
+    } else {
+        throw new Error('No AI Mesh key — click ⚙️ to add a Tripo3D key (free credits) or Meshy key.');
+    }
+
+    let taskId;
+    const providerLabel = provider === 'tripo3d' ? 'Tripo3D' : 'Meshy.ai';
 
     if (mode === 'mesh-image') {
         // Step 1: generate image with DALL-E
@@ -1304,64 +1330,55 @@ async function generateWithMeshy(prompt, mode) {
         const imgData = await imgResp.json();
         const imageUrl = imgData.data[0].url;
 
-        // Show the image
         document.getElementById('aiImageEl').src = imageUrl;
         document.getElementById('aiImagePreview').style.display = 'block';
 
-        // Step 2: send image to Meshy
-        setLoading(true, 'Converting image to 3D mesh (Meshy.ai)… this takes ~2 min');
+        setLoading(true, `Converting image to 3D mesh (${providerLabel})… this takes ~2 min`);
         const taskResp = await fetch('/api/meshy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'image-to-3d', meshyKey, image_url: imageUrl })
+            body: JSON.stringify({ provider, action: 'image-to-3d', apiKey, image_url: imageUrl })
         });
         const taskData = await taskResp.json();
-        if (taskData.error) throw new Error(`Meshy: ${taskData.error}`);
-        taskId = taskData.result;
-        pollAction = 'poll-image';
+        if (taskData.error) throw new Error(`${providerLabel}: ${taskData.error}`);
+        taskId = taskData.taskId;
 
     } else {
-        // text-to-3D
-        setLoading(true, 'Meshy.ai generating 3D mesh from text… this takes ~2 min');
+        setLoading(true, `${providerLabel} generating 3D mesh… this takes ~2 min`);
         const taskResp = await fetch('/api/meshy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'text-to-3d', meshyKey, prompt, art_style: 'realistic' })
+            body: JSON.stringify({ provider, action: 'text-to-3d', apiKey, prompt })
         });
         const taskData = await taskResp.json();
-        if (taskData.error) throw new Error(`Meshy: ${taskData.error}`);
-        taskId = taskData.result;
-        pollAction = 'poll-text';
+        if (taskData.error) throw new Error(`${providerLabel}: ${taskData.error}`);
+        taskId = taskData.taskId;
     }
 
-    // Poll until done
-    const glbUrl = await pollMeshyTask(taskId, meshyKey, pollAction);
-
-    // Load GLB into Three.js
+    const glbUrl = await pollMeshyTask(taskId, apiKey, provider, mode === 'mesh-image' ? 'image-to-3d' : 'text-to-3d');
     setLoading(true, 'Loading 3D model…');
     await loadGLBIntoScene(glbUrl);
 }
 
-async function pollMeshyTask(taskId, meshyKey, pollAction) {
-    const MAX_POLLS = 80; // 4 minutes max
+async function pollMeshyTask(taskId, apiKey, provider, action) {
+    const MAX_POLLS = 80;
     for (let i = 0; i < MAX_POLLS; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        const r = await fetch(`/api/meshy?action=${pollAction}&meshyKey=${encodeURIComponent(meshyKey)}&id=${taskId}`);
+        const r = await fetch(`/api/meshy?provider=${provider}&action=${action}&apiKey=${encodeURIComponent(apiKey)}&id=${taskId}`);
         const data = await r.json();
-        if (data.error) throw new Error(`Meshy poll error: ${data.error}`);
+        if (data.error) throw new Error(`Poll error: ${data.error}`);
 
-        const pct = data.progress || 0;
-        setLoading(true, `Meshy.ai generating… ${pct}%`);
+        setLoading(true, `${provider === 'tripo3d' ? 'Tripo3D' : 'Meshy.ai'} generating… ${data.progress || 0}%`);
 
-        if (data.status === 'SUCCEEDED') {
-            if (!data.model_urls?.glb) throw new Error('Meshy succeeded but no GLB URL returned');
-            return data.model_urls.glb;
+        if (data.status === 'success') {
+            if (!data.glbUrl) throw new Error('Generation succeeded but no GLB URL returned');
+            return data.glbUrl;
         }
-        if (data.status === 'FAILED') {
-            throw new Error(`Meshy generation failed: ${data.task_error?.message || 'unknown error'}`);
+        if (data.status === 'failed') {
+            throw new Error(data.error || 'Generation failed');
         }
     }
-    throw new Error('Meshy timed out after 4 minutes');
+    throw new Error('Generation timed out after 4 minutes');
 }
 
 async function loadGLBIntoScene(glbUrl) {
@@ -1519,11 +1536,11 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
             document.getElementById('generateBtn').textContent = '⚙️ Generate CAD';
             imgPreview.style.display = 'none';
         } else if (currentMode === 'mesh-text') {
-            input.placeholder = 'Describe anything — car, character, building, animal…\n(Meshy.ai generates a real 3D mesh)';
+            input.placeholder = 'Describe anything — car, character, building, animal…\n(Tripo3D/Meshy generates a real 3D mesh)';
             document.getElementById('generateBtn').textContent = '✨ Generate Mesh';
             imgPreview.style.display = 'none';
         } else {
-            input.placeholder = 'Describe anything — DALL-E generates a photo, then it\'s converted to 3D…\n(Needs OpenAI + Meshy.ai keys)';
+            input.placeholder = 'Describe anything — DALL-E generates a photo, then it\'s converted to 3D…\n(Needs OpenAI key + Tripo3D or Meshy key)';
             document.getElementById('generateBtn').textContent = '🖼️ Image → 3D';
             imgPreview.style.display = 'none';
         }
