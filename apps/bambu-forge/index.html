@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BambuForge — AI 3D Print Generator for Bambu Lab X1C</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:      #0d0d0d;
+            --bg2:     #141414;
+            --bg3:     #1a1a1a;
+            --border:  #252525;
+            --border2: #333;
+            --accent:  #00aaff;
+            --accent2: #0077cc;
+            --text:    #e0e0e0;
+            --muted:   #777;
+            --success: #4caf50;
+            --warning: #f59e0b;
+            --error:   #ef4444;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ── Layout ── */
+        .app { display: flex; flex-direction: column; height: 100vh; }
+
+        /* ── Header ── */
+        .header {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0; z-index: 20;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-weight: 700; font-size: 1rem; color: var(--accent);
+            text-decoration: none; white-space: nowrap;
+        }
+        .logo-emoji { font-size: 1.3rem; }
+        .logo-back { font-size: 0.7rem; color: var(--muted); text-decoration: none; margin-left: 0.25rem; }
+        .logo-back:hover { color: var(--accent); }
+        .header-right { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+
+        /* ── Form Controls ── */
+        select, input[type="text"], input[type="password"], textarea {
+            background: var(--bg3); border: 1px solid var(--border2);
+            color: var(--text); border-radius: 6px;
+            padding: 0.38rem 0.6rem; font-size: 0.82rem;
+            outline: none; font-family: inherit; transition: border-color 0.15s;
+        }
+        select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+        select { cursor: pointer; }
+
+        /* ── Buttons ── */
+        .btn {
+            background: var(--accent); color: #000; border: none;
+            border-radius: 6px; padding: 0.38rem 0.9rem;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            transition: background 0.15s, color 0.15s; white-space: nowrap;
+        }
+        .btn:hover:not(:disabled) { background: var(--accent2); color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-ghost {
+            background: transparent; color: var(--muted);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover:not(:disabled) { background: var(--bg3); color: var(--text); }
+        .btn-icon {
+            background: transparent; border: none; color: var(--muted);
+            cursor: pointer; padding: 0.38rem 0.45rem; border-radius: 6px;
+            font-size: 1rem; transition: color 0.15s, background 0.15s; line-height: 1;
+        }
+        .btn-icon:hover { color: var(--text); background: var(--bg3); }
+        .btn-icon.active { color: var(--accent); }
+
+        /* ── Main ── */
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 350px; min-width: 260px; display: flex; flex-direction: column;
+            border-right: 1px solid var(--border); background: var(--bg2); flex-shrink: 0;
+        }
+        .sidebar-tabs {
+            display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .tab-btn {
+            flex: 1; background: transparent; border: none; color: var(--muted);
+            padding: 0.55rem 0.5rem; font-size: 0.76rem; font-weight: 600;
+            cursor: pointer; border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s; font-family: inherit;
+        }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+        .tab-panel.active { display: flex; }
+
+        /* ── Messages ── */
+        .messages {
+            flex: 1; overflow-y: auto; padding: 0.85rem;
+            display: flex; flex-direction: column; gap: 0.7rem;
+        }
+        .messages::-webkit-scrollbar { width: 3px; }
+        .messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+        .msg { display: flex; flex-direction: column; gap: 0.2rem; }
+        .msg-label {
+            font-size: 0.68rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .msg-user .msg-label { color: var(--accent); }
+        .msg-success .msg-label { color: var(--success); }
+        .msg-error .msg-label { color: var(--error); }
+        .msg-bubble {
+            background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.55rem 0.75rem;
+            font-size: 0.83rem; line-height: 1.55;
+        }
+        .msg-user .msg-bubble { background: rgba(0,170,255,0.07); border-color: rgba(0,170,255,0.2); }
+        .msg-success .msg-bubble { border-color: rgba(76,175,80,0.25); }
+        .msg-error .msg-bubble { border-color: rgba(239,68,68,0.3); color: var(--error); }
+        .msg-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.2rem; }
+        .badge {
+            background: var(--bg3); border: 1px solid var(--border2);
+            border-radius: 4px; padding: 0.1rem 0.4rem;
+            font-size: 0.68rem; color: var(--muted);
+        }
+        .badge-blue { border-color: rgba(0,170,255,0.35); color: var(--accent); background: rgba(0,170,255,0.07); }
+        .badge-green { border-color: rgba(76,175,80,0.35); color: var(--success); background: rgba(76,175,80,0.07); }
+
+        /* ── Prompt Area ── */
+        .prompt-area {
+            padding: 0.65rem; border-top: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 0.45rem; flex-shrink: 0;
+        }
+        .prompt-input {
+            width: 100%; resize: none; border-radius: 8px;
+            padding: 0.6rem 0.7rem; font-size: 0.84rem;
+            min-height: 74px; max-height: 140px; line-height: 1.5;
+        }
+        .prompt-row { display: flex; align-items: center; gap: 0.4rem; }
+        .prompt-row .btn { flex: 1; padding: 0.45rem; }
+        .char-hint { font-size: 0.68rem; color: var(--muted); margin-left: auto; }
+
+        /* ── History ── */
+        .history-list {
+            flex: 1; overflow-y: auto; padding: 0.65rem;
+            display: flex; flex-direction: column; gap: 0.45rem;
+        }
+        .history-list::-webkit-scrollbar { width: 3px; }
+        .history-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+        .history-item {
+            background: var(--bg3); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.6rem 0.75rem;
+            cursor: pointer; transition: border-color 0.15s; font-size: 0.8rem;
+        }
+        .history-item:hover { border-color: var(--accent); }
+        .history-prompt { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-meta { color: var(--muted); font-size: 0.7rem; margin-top: 0.2rem; }
+        .history-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 2rem 1rem; }
+
+        /* ── 3D Viewer ── */
+        .viewer {
+            flex: 1; position: relative; background: var(--bg); overflow: hidden;
+        }
+        #threeCanvas { display: block; width: 100%; height: 100%; }
+
+        .viewer-toolbar {
+            position: absolute; top: 0.75rem; right: 0.75rem;
+            display: flex; gap: 0.3rem; z-index: 5;
+        }
+        .viewer-info {
+            position: absolute; bottom: 4rem; left: 0.75rem;
+            display: none; flex-direction: column; gap: 0.35rem; z-index: 5;
+        }
+        .info-pill {
+            background: rgba(13,13,13,0.88); border: 1px solid var(--border2);
+            border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.72rem;
+            color: var(--muted); backdrop-filter: blur(8px); max-width: 320px;
+        }
+        .info-pill strong { color: var(--text); }
+        .viewer-download {
+            position: absolute; bottom: 0.75rem; right: 0.75rem;
+            display: none; gap: 0.4rem; z-index: 5;
+        }
+        .empty-state {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center; color: var(--muted); pointer-events: none;
+            user-select: none;
+        }
+        .empty-icon { font-size: 4rem; opacity: 0.2; margin-bottom: 0.75rem; }
+        .empty-state h3 { font-size: 1rem; opacity: 0.4; margin-bottom: 0.4rem; }
+        .empty-state p { font-size: 0.78rem; opacity: 0.3; max-width: 240px; }
+
+        /* ── Loading Overlay ── */
+        .viewer-loader {
+            display: none; position: absolute; inset: 0;
+            background: rgba(13,13,13,0.65); z-index: 15;
+            align-items: center; justify-content: center; flex-direction: column; gap: 0.75rem;
+            backdrop-filter: blur(6px);
+        }
+        .viewer-loader.active { display: flex; }
+        .loader-ring {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(0,170,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .loader-text { color: var(--accent); font-size: 0.85rem; font-weight: 500; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Code Panel ── */
+        .code-panel {
+            display: none; position: absolute; bottom: 0; left: 0; right: 0;
+            max-height: 45%; background: rgba(10,10,10,0.96);
+            border-top: 1px solid var(--border2); z-index: 10;
+            flex-direction: column; backdrop-filter: blur(12px);
+        }
+        .code-panel.open { display: flex; }
+        .code-header {
+            display: flex; align-items: center; padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid var(--border); gap: 0.5rem; flex-shrink: 0;
+        }
+        .code-header span { font-size: 0.75rem; font-weight: 600; }
+        .code-block {
+            overflow-y: auto; padding: 0.75rem 1rem;
+            font-size: 0.75rem; font-family: 'Courier New', Consolas, monospace;
+            color: #7ec8a4; line-height: 1.65; white-space: pre-wrap;
+            flex: 1; min-height: 0;
+        }
+        .code-block::-webkit-scrollbar { width: 3px; }
+        .code-block::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+        .copy-btn { margin-left: auto; }
+
+        /* ── Settings Modal ── */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); z-index: 100;
+            align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        .overlay.open { display: flex; }
+        .modal {
+            background: var(--bg2); border: 1px solid var(--border2);
+            border-radius: 12px; padding: 1.4rem;
+            width: 460px; max-width: calc(100vw - 2rem);
+            max-height: calc(100vh - 2rem); overflow-y: auto;
+        }
+        .modal h2 { font-size: 1rem; margin-bottom: 1.1rem; display: flex; align-items: center; gap: 0.4rem; }
+        .section-label {
+            font-size: 0.68rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border); padding-bottom: 0.3rem;
+            margin: 0.9rem 0 0.6rem;
+        }
+        .section-label:first-of-type { margin-top: 0; }
+        .field { margin-bottom: 0.65rem; }
+        .field label {
+            display: flex; align-items: center; gap: 0.35rem;
+            font-size: 0.73rem; font-weight: 600; color: var(--muted);
+            margin-bottom: 0.28rem; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .field input { width: 100%; padding: 0.5rem 0.65rem; font-size: 0.84rem; }
+        .field .hint { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+        .field .hint a { color: var(--accent); }
+        .modal-footer {
+            display: flex; gap: 0.5rem; justify-content: flex-end;
+            margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px solid var(--border);
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border2); display: inline-block; }
+        .dot.set { background: var(--success); }
+
+        /* ── Toasts ── */
+        .toasts {
+            position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+            z-index: 200; display: flex; flex-direction: column; gap: 0.4rem; align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--bg2); border: 1px solid var(--border2);
+            border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.8rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); white-space: nowrap;
+            animation: toastIn 0.2s ease; pointer-events: auto;
+        }
+        .toast-success { border-color: rgba(76,175,80,0.5); color: var(--success); }
+        .toast-error   { border-color: rgba(239,68,68,0.5); color: var(--error); }
+        .toast-info    { border-color: rgba(0,170,255,0.4); color: var(--accent); }
+        @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ── Responsive ── */
+        @media (max-width: 680px) {
+            .main { flex-direction: column; }
+            .sidebar { width: 100%; min-width: unset; max-height: 44vh; border-right: none; border-bottom: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+
+    <!-- Header -->
+    <header class="header">
+        <a class="logo" href="/apps/bambu-forge/">
+            <span class="logo-emoji">🖨️</span> BambuForge
+        </a>
+        <a class="logo-back" href="/index.html">← dev.deacyde.com</a>
+        <div class="header-right">
+            <select id="providerSelect" title="LLM Provider"></select>
+            <select id="modelSelect" title="Model"></select>
+            <button class="btn-icon" id="settingsBtn" title="API Keys">⚙️</button>
+            <button class="btn-icon" id="newSessionBtn" title="New session">✕</button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <div class="main">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" data-tab="chat">💬 Generate</button>
+                <button class="tab-btn" data-tab="history">🕓 History</button>
+            </div>
+
+            <!-- Generate tab -->
+            <div class="tab-panel active" id="tab-chat">
+                <div class="messages" id="messages">
+                    <div class="msg">
+                        <div class="msg-label">BambuForge</div>
+                        <div class="msg-bubble">
+                            Describe anything you want to 3D print on your <strong>Bambu Lab X1C</strong> — I'll generate geometry and a downloadable <strong>STL</strong> file.<br><br>
+                            Try: <em>"cable clip for 6mm cable"</em> · <em>"minimalist phone stand"</em> · <em>"small vase with hex texture"</em> · <em>"custom filament guide for X1C"</em>
+                        </div>
+                    </div>
+                </div>
+                <div class="prompt-area">
+                    <textarea class="prompt-input" id="promptInput"
+                        placeholder="Describe what you want to print…&#10;(Shift+Enter for new line, Enter to generate)"
+                        rows="3"></textarea>
+                    <div class="prompt-row">
+                        <button class="btn" id="generateBtn">⚡ Generate</button>
+                        <span class="char-hint" id="charHint"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History tab -->
+            <div class="tab-panel" id="tab-history">
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">No generations yet</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 3D Viewer -->
+        <div class="viewer" id="viewer">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">🖨️</div>
+                <h3>Nothing here yet</h3>
+                <p>Enter a prompt and hit Generate to build your first model</p>
+            </div>
+
+            <canvas id="threeCanvas"></canvas>
+
+            <!-- Toolbar -->
+            <div class="viewer-toolbar">
+                <button class="btn-icon" id="resetCamBtn" title="Reset camera">🎯</button>
+                <button class="btn-icon" id="wireframeBtn" title="Toggle wireframe">🔲</button>
+                <button class="btn-icon" id="gridBtn" title="Toggle grid">⊞</button>
+                <button class="btn-icon" id="codeBtn" title="View generated code">{ }</button>
+            </div>
+
+            <!-- Info pills -->
+            <div class="viewer-info" id="viewerInfo">
+                <div class="info-pill">📐 <strong id="dimText">—</strong></div>
+                <div class="info-pill" id="notesPill" style="display:none">💡 <span id="notesText"></span></div>
+            </div>
+
+            <!-- Download -->
+            <div class="viewer-download" id="downloadArea">
+                <button class="btn btn-ghost" id="copyScadBtn" title="Copy generated code">📋 Copy Code</button>
+                <button class="btn" id="downloadBtn">⬇️ Download STL</button>
+            </div>
+
+            <!-- Loader -->
+            <div class="viewer-loader" id="viewerLoader">
+                <div class="loader-ring"></div>
+                <div class="loader-text" id="loaderText">Generating…</div>
+            </div>
+
+            <!-- Code panel -->
+            <div class="code-panel" id="codePanel">
+                <div class="code-header">
+                    <span>Generated Three.js Code</span>
+                    <button class="btn-icon copy-btn" id="copyCodeBtn" title="Copy">📋</button>
+                    <button class="btn-icon" id="closePanelBtn" title="Close">✕</button>
+                </div>
+                <pre class="code-block" id="codeBlock"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay" id="settingsOverlay">
+    <div class="modal">
+        <h2>⚙️ API Keys & Settings</h2>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">Keys are stored only in your browser's localStorage — never sent to any server.</p>
+
+        <div class="section-label">OpenAI</div>
+        <div class="field">
+            <label><span class="dot" id="dot-openai"></span> API Key</label>
+            <input type="password" id="key-openai" placeholder="sk-..." autocomplete="off">
+            <div class="hint">Models: gpt-4o, gpt-4o-mini, o3-mini &nbsp;·&nbsp; <a href="https://platform.openai.com/api-keys" target="_blank">Get key</a></div>
+        </div>
+
+        <div class="section-label">Google Gemini</div>
+        <div class="field">
+            <label><span class="dot" id="dot-gemini"></span> API Key</label>
+            <input type="password" id="key-gemini" placeholder="AIza..." autocomplete="off">
+            <div class="hint">Free tier available &nbsp;·&nbsp; <a href="https://aistudio.google.com" target="_blank">Get key at AI Studio</a></div>
+        </div>
+
+        <div class="section-label">Groq (Fast + Free Tier)</div>
+        <div class="field">
+            <label><span class="dot" id="dot-groq"></span> API Key</label>
+            <input type="password" id="key-groq" placeholder="gsk_..." autocomplete="off">
+            <div class="hint">LLaMA 3.3 70B — very fast &nbsp;·&nbsp; <a href="https://console.groq.com" target="_blank">Get free key</a></div>
+        </div>
+
+        <div class="section-label">Custom OpenAI-Compatible Endpoint</div>
+        <div class="field">
+            <label>Endpoint URL</label>
+            <input type="text" id="key-custom-url" placeholder="https://your-api.com/v1/chat/completions">
+        </div>
+        <div class="field">
+            <label><span class="dot" id="dot-custom"></span> API Key</label>
+            <input type="password" id="key-custom-key" placeholder="API key" autocomplete="off">
+        </div>
+        <div class="field">
+            <label>Model Name</label>
+            <input type="text" id="key-custom-model" placeholder="e.g. mistral-large, llama3, deepseek-r1">
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="cancelSettingsBtn">Cancel</button>
+            <button class="btn" id="saveSettingsBtn">Save Keys</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toasts -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════
+const PROVIDERS = {
+    openai: {
+        label: 'OpenAI',
+        models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
+        type: 'openai',
+        url: 'https://api.openai.com/v1/chat/completions'
+    },
+    gemini: {
+        label: 'Google Gemini',
+        models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+        type: 'gemini',
+        url: ''
+    },
+    groq: {
+        label: 'Groq',
+        models: ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768'],
+        type: 'openai',
+        url: 'https://api.groq.com/openai/v1/chat/completions'
+    },
+    custom: {
+        label: 'Custom',
+        models: [],
+        type: 'openai',
+        url: ''
+    }
+};
+
+const SYSTEM_PROMPT = `You are BambuForge, an expert AI 3D model generator optimized for the Bambu Lab X1C printer (build volume: 256×256×256 mm, 0.4mm nozzle).
+
+When given a description of an object to print, respond with ONLY a valid JSON object — no markdown fences, no explanation, no extra text:
+
+{
+  "description": "Short description of what was generated",
+  "dimensions": "W × D × H in mm",
+  "printNotes": "Brief X1C-specific tips (supports, orientation, infill, material)",
+  "code": "JAVASCRIPT_HERE"
+}
+
+The "code" field must be a JavaScript function body that:
+1. Has access to THREE (Three.js r128 global)
+2. MUST end with: return meshes;  (where meshes is an array)
+3. Each element in meshes must be an object: { geometry, color, position: {x,y,z}, rotation: {x,y,z}, name }
+4. Use ONLY these Three.js constructors: BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, ConeGeometry, TorusKnotGeometry, LatheGeometry
+5. All units are millimeters. Keep within 256×256×256 mm.
+6. Place the model's base at Y=0 (resting on the print bed grid).
+7. FDM printability rules:
+   - Minimum wall thickness ≥ 1.2 mm
+   - Avoid unsupported overhangs > 45°
+   - Use chamfers/fillets where possible
+8. Use meaningful hex colors (e.g. 0x4488cc for blue plastic, 0x888888 for gray, 0xeeeeee for white)
+9. Build complex shapes from multiple mesh descriptors combined
+
+EXAMPLE:
+{
+  "description": "Cable clip for 6mm round cable",
+  "dimensions": "22 × 14 × 9 mm",
+  "printNotes": "Print flat on bed, no supports. 3 walls, 20% gyroid infill. PLA.",
+  "code": "const meshes = []; meshes.push({ geometry: new THREE.BoxGeometry(22, 9, 14), color: 0x2255cc, position: {x:0, y:4.5, z:0}, rotation: {x:0,y:0,z:0}, name:'body' }); meshes.push({ geometry: new THREE.CylinderGeometry(3.2, 3.2, 16, 20), color: 0x0d0d0d, position: {x:0, y:7, z:0}, rotation: {x:Math.PI/2, y:0, z:0}, name:'channel' }); return meshes;"
+}
+
+For follow-up refinements, modify and return the complete updated code based on user feedback.`;
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+const state = {
+    generating: false,
+    hasModel: false,
+    wireframe: false,
+    gridVisible: true,
+    currentCode: '',
+    history: []  // conversation turns
+};
+
+// ══════════════════════════════════════════════════════════════
+//  THREE.JS SETUP
+// ══════════════════════════════════════════════════════════════
+const canvas = document.getElementById('threeCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.setClearColor(0x0d0d0d);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 5000);
+camera.position.set(100, 75, 100);
+
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 2;
+controls.maxDistance = 1500;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(120, 180, 100);
+sun.castShadow = true;
+scene.add(sun);
+scene.add(Object.assign(new THREE.DirectionalLight(0x88aaff, 0.25), { position: new THREE.Vector3(-80, -40, -100) }));
+
+// Grid + build-volume box
+const grid = new THREE.GridHelper(256, 16, 0x2a2a2a, 0x1e1e1e);
+scene.add(grid);
+
+const bvBox = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(256, 256, 256)),
+    new THREE.LineBasicMaterial({ color: 0x00aaff, opacity: 0.12, transparent: true })
+);
+bvBox.position.y = 128;
+scene.add(bvBox);
+
+const modelGroup = new THREE.Group();
+scene.add(modelGroup);
+
+function fitRenderer() {
+    const v = document.getElementById('viewer');
+    const w = v.clientWidth, h = v.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+fitRenderer();
+window.addEventListener('resize', fitRenderer);
+
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+
+// ══════════════════════════════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════════════════════════════
+function loadKeys()    { try { return JSON.parse(localStorage.getItem('bf_keys') || '{}'); } catch { return {}; } }
+function saveKeys(k)   { localStorage.setItem('bf_keys', JSON.stringify(k)); }
+function loadHistory() { try { return JSON.parse(localStorage.getItem('bf_hist') || '[]'); } catch { return []; } }
+function saveHistItem(item) {
+    const h = loadHistory();
+    h.unshift(item);
+    localStorage.setItem('bf_hist', JSON.stringify(h.slice(0, 40)));
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LLM
+// ══════════════════════════════════════════════════════════════
+async function callOpenAICompat(url, key, model, messages) {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 2048 })
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${r.status}`); }
+    return (await r.json()).choices[0].message.content;
+}
+
+async function callGemini(key, model, messages) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    const sys = messages.find(m => m.role === 'system');
+    const turns = messages.filter(m => m.role !== 'system').map((m, i) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: (i === 0 && sys) ? sys.content + '\n\n' + m.content : m.content }]
+    }));
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: turns, generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } })
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${r.status}`); }
+    return (await r.json()).candidates[0].content.parts[0].text;
+}
+
+async function llmCall(userMsg) {
+    const provider = document.getElementById('providerSelect').value;
+    const model    = document.getElementById('modelSelect').value;
+    const keys     = loadKeys();
+    const messages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...state.history,
+        { role: 'user', content: userMsg }
+    ];
+    const cfg = PROVIDERS[provider];
+    if (provider === 'gemini') {
+        if (!keys.gemini) throw new Error('No Gemini API key — click ⚙️ to add one.');
+        return callGemini(keys.gemini, model, messages);
+    }
+    let url = cfg.url, key;
+    if (provider === 'openai') { key = keys.openai; if (!key) throw new Error('No OpenAI API key — click ⚙️ to add one.'); }
+    else if (provider === 'groq') { key = keys.groq;  if (!key) throw new Error('No Groq API key — click ⚙️ to add one.'); }
+    else { url = keys['custom-url']; key = keys['custom-key']; if (!url || !key) throw new Error('Custom endpoint not configured — click ⚙️.'); }
+    return callOpenAICompat(url, key, model, messages);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  JSON + CODE EVAL
+// ══════════════════════════════════════════════════════════════
+function extractJSON(raw) {
+    const s = raw.trim();
+    try { return JSON.parse(s); } catch {}
+    const m = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (m) { try { return JSON.parse(m[1].trim()); } catch {} }
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a !== -1 && b !== -1) { try { return JSON.parse(s.slice(a, b+1)); } catch {} }
+    throw new Error('Could not parse JSON from LLM response.');
+}
+
+function runModelCode(code) {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('THREE', '"use strict";\n' + code);
+    const result = fn(THREE);
+    if (!Array.isArray(result)) throw new Error('Code must return an array.');
+    if (result.length === 0) throw new Error('Code returned empty array.');
+    return result;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MESH RENDER + CAMERA FIT
+// ══════════════════════════════════════════════════════════════
+function clearModel() {
+    modelGroup.children.slice().forEach(c => { c.geometry?.dispose(); c.material?.dispose(); modelGroup.remove(c); });
+}
+
+function renderDescriptors(descriptors) {
+    clearModel();
+    descriptors.forEach(d => {
+        const mat  = new THREE.MeshPhongMaterial({ color: d.color ?? 0x888888, shininess: 45, specular: 0x1a1a1a });
+        const mesh = new THREE.Mesh(d.geometry, mat);
+        mesh.castShadow = mesh.receiveShadow = true;
+        if (d.position) mesh.position.set(d.position.x||0, d.position.y||0, d.position.z||0);
+        if (d.rotation) mesh.rotation.set(d.rotation.x||0, d.rotation.y||0, d.rotation.z||0);
+        if (d.name) mesh.name = d.name;
+        modelGroup.add(mesh);
+    });
+
+    const box = new THREE.Box3().setFromObject(modelGroup);
+    const size = new THREE.Vector3(), center = new THREE.Vector3();
+    box.getSize(size); box.getCenter(center);
+    const dist = Math.max(size.x, size.y, size.z) * 2.2;
+    camera.position.set(center.x + dist * 0.7, center.y + dist * 0.5, center.z + dist * 0.7);
+    controls.target.copy(center); controls.update();
+    return { size, center };
+}
+
+function setWireframe(on) {
+    modelGroup.traverse(o => { if (o.isMesh) o.material.wireframe = on; });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STL EXPORT
+// ══════════════════════════════════════════════════════════════
+function downloadSTL(name) {
+    const stl  = new THREE.STLExporter().parse(modelGroup, { binary: true });
+    const blob = new Blob([stl], { type: 'application/octet-stream' });
+    const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════════════
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function addMsg(role, html, meta) {
+    const labels = { user:'You', assistant:'BambuForge', success:'BambuForge ✓', error:'Error' };
+    const wrap = document.createElement('div');
+    wrap.className = `msg msg-${role}`;
+    wrap.innerHTML = `<div class="msg-label">${labels[role]||role}</div><div class="msg-bubble">${html}</div>`;
+    if (meta) {
+        const row = document.createElement('div');
+        row.className = 'msg-meta';
+        if (meta.dims)     row.innerHTML += `<span class="badge badge-green">📐 ${esc(meta.dims)}</span>`;
+        if (meta.provider) row.innerHTML += `<span class="badge badge-blue">${esc(meta.provider)}</span>`;
+        wrap.appendChild(row);
+    }
+    const msgs = document.getElementById('messages');
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+function toast(msg, type = 'info', ms = 3000) {
+    const el = Object.assign(document.createElement('div'), { className: `toast toast-${type}`, textContent: msg });
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), ms);
+}
+
+function setLoading(on, text = 'Generating…') {
+    document.getElementById('viewerLoader').classList.toggle('active', on);
+    document.getElementById('loaderText').textContent = text;
+    document.getElementById('generateBtn').disabled = on;
+}
+
+function showModel(result, size) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('downloadArea').style.display = 'flex';
+    document.getElementById('viewerInfo').style.display = 'flex';
+    document.getElementById('dimText').textContent = result.dimensions || `${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)} mm`;
+    if (result.printNotes) {
+        document.getElementById('notesPill').style.display = 'block';
+        document.getElementById('notesText').textContent = result.printNotes;
+    }
+    document.getElementById('codeBlock').textContent = state.currentCode;
+    if (state.wireframe) setWireframe(true);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HISTORY UI
+// ══════════════════════════════════════════════════════════════
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    const items = loadHistory();
+    if (!items.length) { list.innerHTML = '<div class="history-empty">No generations yet</div>'; return; }
+    list.innerHTML = items.map(it => `
+        <div class="history-item" data-id="${it.id}">
+            <div class="history-prompt">${esc(it.prompt)}</div>
+            <div class="history-meta">${esc(it.description||'')}${it.dimensions ? ' · ' + esc(it.dimensions) : ''}</div>
+        </div>`).join('');
+    list.querySelectorAll('.history-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const it = items.find(i => i.id == el.dataset.id);
+            if (!it) return;
+            try {
+                const descs = runModelCode(it.code);
+                const { size } = renderDescriptors(descs);
+                state.currentCode = it.code;
+                state.hasModel = true;
+                showModel(it, size);
+                document.querySelector('[data-tab="chat"]').click();
+                toast('Model loaded', 'success');
+            } catch(e) { toast('Load failed: ' + e.message, 'error', 5000); }
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROVIDER / MODEL SELECT
+// ══════════════════════════════════════════════════════════════
+function buildProviderSelect() {
+    const sel = document.getElementById('providerSelect');
+    sel.innerHTML = Object.entries(PROVIDERS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
+}
+
+function updateModelSelect() {
+    const provider = document.getElementById('providerSelect').value;
+    const modelSel = document.getElementById('modelSelect');
+    const keys = loadKeys();
+    if (provider === 'custom') {
+        const m = keys['custom-model'] || 'custom-model';
+        modelSel.innerHTML = `<option value="${m}">${m}</option>`;
+    } else {
+        modelSel.innerHTML = PROVIDERS[provider].models.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════════════
+function openSettings() {
+    const k = loadKeys();
+    ['openai','gemini','groq'].forEach(id => document.getElementById(`key-${id}`).value = k[id]||'');
+    document.getElementById('key-custom-url').value   = k['custom-url']   || '';
+    document.getElementById('key-custom-key').value   = k['custom-key']   || '';
+    document.getElementById('key-custom-model').value = k['custom-model'] || '';
+    refreshDots(k);
+    document.getElementById('settingsOverlay').classList.add('open');
+}
+
+function saveSettings() {
+    const k = {
+        openai:        document.getElementById('key-openai').value.trim(),
+        gemini:        document.getElementById('key-gemini').value.trim(),
+        groq:          document.getElementById('key-groq').value.trim(),
+        'custom-url':  document.getElementById('key-custom-url').value.trim(),
+        'custom-key':  document.getElementById('key-custom-key').value.trim(),
+        'custom-model':document.getElementById('key-custom-model').value.trim()
+    };
+    saveKeys(k);
+    refreshDots(k);
+    updateModelSelect();
+    document.getElementById('settingsOverlay').classList.remove('open');
+    toast('Keys saved', 'success');
+}
+
+function refreshDots(k) {
+    ['openai','gemini','groq'].forEach(id => {
+        document.getElementById(`dot-${id}`).className = 'dot' + (k[id] ? ' set' : '');
+    });
+    document.getElementById('dot-custom').className = 'dot' + (k['custom-key'] ? ' set' : '');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GENERATE
+// ══════════════════════════════════════════════════════════════
+async function generate() {
+    const input  = document.getElementById('promptInput');
+    const prompt = input.value.trim();
+    if (!prompt || state.generating) return;
+
+    state.generating = true;
+    input.value = '';
+    document.getElementById('charHint').textContent = '';
+
+    const provider = document.getElementById('providerSelect').value;
+    const model    = document.getElementById('modelSelect').value;
+    addMsg('user', esc(prompt));
+    setLoading(true, `Asking ${PROVIDERS[provider].label} (${model})…`);
+
+    const MAX = 3;
+    let lastErr = '';
+    for (let attempt = 1; attempt <= MAX; attempt++) {
+        try {
+            const msg = attempt === 1 ? prompt
+                : `${prompt}\n\n[Attempt ${attempt}: previous code failed with: ${lastErr}. Please fix and return correct code.]`;
+            const raw    = await llmCall(msg);
+            const result = extractJSON(raw);
+            if (!result.code) throw new Error('LLM returned no code field.');
+
+            const descs = runModelCode(result.code);
+            const { size } = renderDescriptors(descs);
+
+            state.currentCode = result.code;
+            state.hasModel    = true;
+            state.history.push({ role:'user', content: prompt }, { role:'assistant', content: raw });
+            if (state.history.length > 20) state.history = state.history.slice(-20);
+
+            showModel(result, size);
+
+            const dims = result.dimensions || `${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)} mm`;
+            addMsg('success',
+                `<strong>${esc(result.description||'Model generated')}</strong>` +
+                (result.printNotes ? `<br><small style="color:var(--muted)">${esc(result.printNotes)}</small>` : ''),
+                { dims, provider: `${PROVIDERS[provider].label} · ${model}` }
+            );
+            saveHistItem({ id: Date.now(), prompt, description: result.description, dimensions: result.dimensions, code: result.code });
+            renderHistory();
+            break;
+
+        } catch(e) {
+            lastErr = e.message;
+            if (attempt === MAX) {
+                addMsg('error', `Generation failed after ${MAX} attempts: ${esc(e.message)}`);
+                toast('Generation failed', 'error', 6000);
+            }
+        }
+    }
+
+    setLoading(false);
+    state.generating = false;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ══════════════════════════════════════════════════════════════
+document.getElementById('generateBtn').addEventListener('click', generate);
+document.getElementById('promptInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); }
+});
+document.getElementById('promptInput').addEventListener('input', () => {
+    const l = document.getElementById('promptInput').value.length;
+    document.getElementById('charHint').textContent = l > 0 ? l : '';
+});
+
+document.getElementById('providerSelect').addEventListener('change', updateModelSelect);
+
+// Settings
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+document.getElementById('cancelSettingsBtn').addEventListener('click', () => document.getElementById('settingsOverlay').classList.remove('open'));
+document.getElementById('settingsOverlay').addEventListener('click', e => { if (e.target.id === 'settingsOverlay') document.getElementById('settingsOverlay').classList.remove('open'); });
+
+// Viewer controls
+document.getElementById('resetCamBtn').addEventListener('click', () => {
+    camera.position.set(100, 75, 100); controls.target.set(0, 0, 0); controls.update();
+});
+document.getElementById('wireframeBtn').addEventListener('click', () => {
+    state.wireframe = !state.wireframe;
+    setWireframe(state.wireframe);
+    document.getElementById('wireframeBtn').classList.toggle('active', state.wireframe);
+});
+document.getElementById('gridBtn').addEventListener('click', () => {
+    state.gridVisible = !state.gridVisible;
+    grid.visible = bvBox.visible = state.gridVisible;
+    document.getElementById('gridBtn').classList.toggle('active', !state.gridVisible);
+});
+document.getElementById('codeBtn').addEventListener('click', () => {
+    document.getElementById('codePanel').classList.toggle('open');
+    document.getElementById('codeBtn').classList.toggle('active', document.getElementById('codePanel').classList.contains('open'));
+});
+document.getElementById('closePanelBtn').addEventListener('click', () => {
+    document.getElementById('codePanel').classList.remove('open');
+    document.getElementById('codeBtn').classList.remove('active');
+});
+
+// Copy
+function copyCode() {
+    const code = document.getElementById('codeBlock').textContent;
+    if (!code) { toast('Nothing to copy', 'error'); return; }
+    navigator.clipboard.writeText(code).then(() => toast('Code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
+}
+document.getElementById('copyCodeBtn').addEventListener('click', copyCode);
+document.getElementById('copyScadBtn').addEventListener('click', copyCode);
+
+// Download
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (!state.hasModel) return;
+    const firstUser = state.history.find(m => m.role === 'user');
+    const slug = (firstUser?.content || 'model').slice(0, 28).replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    downloadSTL(`bambuforge-${slug}.stl`);
+    toast('STL downloaded!', 'success');
+});
+
+// New session
+document.getElementById('newSessionBtn').addEventListener('click', () => {
+    if (!confirm('Start new session? Current conversation will be cleared.')) return;
+    state.history = []; state.currentCode = ''; state.hasModel = false;
+    clearModel();
+    document.getElementById('messages').innerHTML = `
+        <div class="msg"><div class="msg-label">BambuForge</div>
+        <div class="msg-bubble">New session started. What would you like to print?</div></div>`;
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('downloadArea').style.display = 'none';
+    document.getElementById('viewerInfo').style.display = 'none';
+    document.getElementById('codePanel').classList.remove('open');
+    document.getElementById('codeBtn').classList.remove('active');
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+buildProviderSelect();
+updateModelSelect();
+refreshDots(loadKeys());
+renderHistory();
+</script>
+</body>
+</html>
