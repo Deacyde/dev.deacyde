@@ -545,57 +545,71 @@ const state = {
 };
 
 // ══════════════════════════════════════════════════════════════
-//  THREE.JS SETUP
+//  THREE.JS SETUP  (wrapped so a WebGL failure doesn't kill the app)
 // ══════════════════════════════════════════════════════════════
-const canvas = document.getElementById('threeCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.setClearColor(0x0d0d0d);
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 5000);
-camera.position.set(100, 75, 100);
-
-const controls = new THREE.OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.06;
-controls.minDistance = 2;
-controls.maxDistance = 1500;
-
-// Lighting
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const sun = new THREE.DirectionalLight(0xffffff, 0.85);
-sun.position.set(120, 180, 100);
-sun.castShadow = true;
-scene.add(sun);
-scene.add(Object.assign(new THREE.DirectionalLight(0x88aaff, 0.25), { position: new THREE.Vector3(-80, -40, -100) }));
-
-// Grid + build-volume box
-const grid = new THREE.GridHelper(256, 16, 0x2a2a2a, 0x1e1e1e);
-scene.add(grid);
-
-const bvBox = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(256, 256, 256)),
-    new THREE.LineBasicMaterial({ color: 0x00aaff, opacity: 0.12, transparent: true })
-);
-bvBox.position.y = 128;
-scene.add(bvBox);
-
-const modelGroup = new THREE.Group();
-scene.add(modelGroup);
+let renderer, scene, camera, controls, grid, bvBox, modelGroup;
+let threeReady = false;
 
 function fitRenderer() {
+    if (!threeReady) return;
     const v = document.getElementById('viewer');
     const w = v.clientWidth, h = v.clientHeight;
+    if (!w || !h) return;
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
 }
-fitRenderer();
-window.addEventListener('resize', fitRenderer);
 
-(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+try {
+    if (typeof THREE === 'undefined') throw new Error('Three.js failed to load from CDN.');
+    const canvas = document.getElementById('threeCanvas');
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'default' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.setClearColor(0x0d0d0d);
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(50, 1, 0.5, 5000);
+    camera.position.set(100, 75, 100);
+
+    controls = new THREE.OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 2;
+    controls.maxDistance = 1500;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+    sun.position.set(120, 180, 100);
+    sun.castShadow = true;
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x88aaff, 0.25);
+    fill.position.set(-80, -40, -100);
+    scene.add(fill);
+
+    grid = new THREE.GridHelper(256, 16, 0x2a2a2a, 0x1e1e1e);
+    scene.add(grid);
+
+    bvBox = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(256, 256, 256)),
+        new THREE.LineBasicMaterial({ color: 0x00aaff, opacity: 0.12, transparent: true })
+    );
+    bvBox.position.y = 128;
+    scene.add(bvBox);
+
+    modelGroup = new THREE.Group();
+    scene.add(modelGroup);
+
+    threeReady = true;
+    fitRenderer();
+    window.addEventListener('resize', fitRenderer);
+    (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+
+} catch(e) {
+    console.error('Three.js init failed:', e);
+    const es = document.getElementById('emptyState');
+    if (es) es.innerHTML = `<div class="empty-icon">⚠️</div><h3>3D preview unavailable</h3><p style="color:var(--error);font-size:0.75rem">${e.message}</p>`;
+}
 
 // ══════════════════════════════════════════════════════════════
 //  STORAGE
@@ -685,10 +699,12 @@ function runModelCode(code) {
 //  MESH RENDER + CAMERA FIT
 // ══════════════════════════════════════════════════════════════
 function clearModel() {
+    if (!threeReady) return;
     modelGroup.children.slice().forEach(c => { c.geometry?.dispose(); c.material?.dispose(); modelGroup.remove(c); });
 }
 
 function renderDescriptors(descriptors) {
+    if (!threeReady) return { size: { x:0, y:0, z:0 }, center: { x:0, y:0, z:0 } };
     clearModel();
     descriptors.forEach(d => {
         const mat  = new THREE.MeshPhongMaterial({ color: d.color ?? 0x888888, shininess: 45, specular: 0x1a1a1a });
@@ -710,6 +726,7 @@ function renderDescriptors(descriptors) {
 }
 
 function setWireframe(on) {
+    if (!threeReady) return;
     modelGroup.traverse(o => { if (o.isMesh) o.material.wireframe = on; });
 }
 
@@ -717,6 +734,7 @@ function setWireframe(on) {
 //  STL EXPORT
 // ══════════════════════════════════════════════════════════════
 function downloadSTL(name) {
+    if (!threeReady) { toast('3D preview not available', 'error'); return; }
     const stl  = new THREE.STLExporter().parse(modelGroup, { binary: true });
     const blob = new Blob([stl], { type: 'application/octet-stream' });
     const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
@@ -937,14 +955,17 @@ document.getElementById('settingsOverlay').addEventListener('click', e => { if (
 
 // Viewer controls
 document.getElementById('resetCamBtn').addEventListener('click', () => {
+    if (!threeReady) return;
     camera.position.set(100, 75, 100); controls.target.set(0, 0, 0); controls.update();
 });
 document.getElementById('wireframeBtn').addEventListener('click', () => {
+    if (!threeReady) return;
     state.wireframe = !state.wireframe;
     setWireframe(state.wireframe);
     document.getElementById('wireframeBtn').classList.toggle('active', state.wireframe);
 });
 document.getElementById('gridBtn').addEventListener('click', () => {
+    if (!threeReady) return;
     state.gridVisible = !state.gridVisible;
     grid.visible = bvBox.visible = state.gridVisible;
     document.getElementById('gridBtn').classList.toggle('active', !state.gridVisible);
@@ -980,7 +1001,7 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
 document.getElementById('newSessionBtn').addEventListener('click', () => {
     if (!confirm('Start new session? Current conversation will be cleared.')) return;
     state.history = []; state.currentCode = ''; state.hasModel = false;
-    clearModel();
+    if (threeReady) clearModel();
     document.getElementById('messages').innerHTML = `
         <div class="msg"><div class="msg-label">BambuForge</div>
         <div class="msg-bubble">New session started. What would you like to print?</div></div>`;
