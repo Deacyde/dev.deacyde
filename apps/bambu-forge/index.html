@@ -1407,7 +1407,7 @@ async function generateWithMeshy(prompt, mode) {
 
     const glbUrl = await pollMeshyTask(taskId, apiKey, provider, action);
     setLoading(true, 'Loading 3D model…');
-    await loadGLBIntoScene(glbUrl);
+    await loadGLBIntoScene(`https://empty-bonus-280d.muddy-river-68bb.workers.dev/api/glb?url=${encodeURIComponent(glbUrl)}`);
 }
 
 // Proxy helpers — route through _worker.js to avoid CORS

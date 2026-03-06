@@ -21,6 +21,20 @@ async function handleRequest(request) {
   // ── CORS preflight ───────────────────────────────────────
   if (request.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
+  // ── /api/glb — proxy binary GLB download (CORS bypass) ──
+  if (url.pathname === '/api/glb') {
+    const glbUrl = url.searchParams.get('url')
+    if (!glbUrl) return jsonResp({ error: 'Missing ?url= parameter' }, 400)
+    try {
+      const r = await fetch(glbUrl)
+      if (!r.ok) return jsonResp({ error: `GLB fetch failed: HTTP ${r.status}` }, 502)
+      const body = await r.arrayBuffer()
+      return new Response(body, {
+        headers: { 'Content-Type': 'model/gltf-binary', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' }
+      })
+    } catch(e) { return jsonResp({ error: `GLB proxy error: ${e.message}` }, 500) }
+  }
+
   // ── /api/meshy — AI 3D generation proxy ─────────────────
   if (url.pathname === '/api/meshy') {
     try {
