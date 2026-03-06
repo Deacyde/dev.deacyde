@@ -33,7 +33,7 @@ async function handleRequest(request) {
           const tb = action === 'text-to-3d'
             ? { type: 'text_to_model', model_version: 'v2.5-20250123', prompt: params.prompt }
             : { type: 'image_to_model', file: { type: 'jpg', url: params.image_url } }
-          const { ok, status, data } = await safeFetch('https://platform.tripo3d.ai/v2/openapi/task', {
+          const { ok, status, data } = await safeFetch('https://api.tripo3d.ai/v2/openapi/task', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(tb)
           })
           if (!ok || data.code !== 0) return jsonResp({ error: data.message || data.raw || `Tripo3D HTTP ${status}` })
@@ -59,7 +59,7 @@ async function handleRequest(request) {
         if (!apiKey || !taskId) return jsonResp({ error: 'Missing apiKey or id' }, 400)
 
         if (provider === 'tripo3d') {
-          const { ok, status, data } = await safeFetch(`https://platform.tripo3d.ai/v2/openapi/task/${taskId}`, { headers: { 'Authorization': `Bearer ${apiKey}` } })
+          const { ok, status, data } = await safeFetch(`https://api.tripo3d.ai/v2/openapi/task/${taskId}`, { headers: { 'Authorization': `Bearer ${apiKey}` } })
           if (!ok || data.code !== 0) return jsonResp({ error: data.message || data.raw || `Tripo3D HTTP ${status}` })
           const t = data.data
           return jsonResp({ status: t.status === 'success' ? 'success' : t.status === 'failed' ? 'failed' : 'running', progress: t.progress || 0, glbUrl: t.output?.model || null, error: t.task_error?.message || null })
