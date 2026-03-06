@@ -1294,7 +1294,7 @@ function refreshDots(k) {
 // ══════════════════════════════════════════════════════════════
 //  AI MESH MODE — Tripo3D / Meshy.ai direct API calls (no proxy needed)
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v0.4.1';
+const APP_VERSION = 'v0.4.2';
 let currentMode = 'cad'; // 'cad' | 'mesh-text' | 'mesh-image'
 
 // Safe JSON fetch — always throws a useful error
@@ -1412,7 +1412,7 @@ async function generateWithMeshy(prompt, mode) {
 
 // Proxy helpers — route through _worker.js to avoid CORS
 async function proxyCreate(provider, apiKey, action, params) {
-    const data = await apiFetch('/api/meshy', {
+    const data = await apiFetch('/.netlify/functions/meshy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, action, apiKey, ...params })
@@ -1426,7 +1426,7 @@ async function pollMeshyTask(taskId, apiKey, provider, action) {
     for (let i = 0; i < MAX_POLLS; i++) {
         await new Promise(r => setTimeout(r, 3000));
         const data = await apiFetch(
-            `/api/meshy?provider=${provider}&action=${encodeURIComponent(action)}&apiKey=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(taskId)}`
+            `/.netlify/functions/meshy?provider=${provider}&action=${encodeURIComponent(action)}&apiKey=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(taskId)}`
         );
 
         setLoading(true, `${label} generating… ${data.progress || 0}%`);
