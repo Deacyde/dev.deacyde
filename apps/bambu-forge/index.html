@@ -9,11 +9,9 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/STLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/FontLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/geometries/TextGeometry.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/utils/BufferGeometryUtils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/geometries/ParametricGeometry.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@jscad/modeling@2.13.0/dist/jscad-modeling.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -398,7 +396,8 @@
             <!-- Download -->
             <div class="viewer-download" id="downloadArea">
                 <button class="btn btn-ghost" id="copyScadBtn" title="Copy generated code">📋 Copy Code</button>
-                <button class="btn" id="downloadBtn">⬇️ Download STL</button>
+                <button class="btn btn-ghost" id="downloadStlBtn">⬇️ STL</button>
+                <button class="btn" id="download3mfBtn">🖨️ Download 3MF</button>
             </div>
 
             <!-- Loader -->
@@ -520,15 +519,17 @@ Variable available: jscad  (the full @jscad/modeling 2.x library)
 
 Destructure what you need at the top:
 const { booleans, colors, extrusions, geometries, hulls,
-        maths, measurements, primitives, transforms, utils } = jscad;
+        maths, measurements, primitives, transforms } = jscad;
 const { union, subtract, intersect } = booleans;
-const { translate, rotate, rotateX, rotateY, rotateZ, scale, mirror } = transforms;
+const { translate, rotate, rotateX, rotateY, rotateZ, scale, mirror,
+        center, align, translateX, translateY, translateZ } = transforms;
 const { extrudeLinear, extrudeRotate, extrudeHelical } = extrusions;
-const { cuboid, sphere, cylinder, cylinderElliptic, torus,
-        circle, rectangle, square, polygon, polyhedron,
+const { cuboid, sphere, cylinder, cylinderElliptic, torus, ellipsoid, geodesicSphere,
+        roundedCuboid, roundedCylinder, circle, rectangle, square, polygon,
         triangle, star, ellipse } = primitives;
 const { hull, hullChain } = hulls;
-const { colorize, colorNameToRgb } = colors;
+const { colorize } = colors;
+const { measureBoundingBox, measureDimensions } = measurements;
 
 Return an array of JSCAD geom3 solids. Coordinate system: XY = print bed, Z = print height (up).
 
@@ -537,12 +538,16 @@ FULL API REFERENCE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ── 3D PRIMITIVES ──
-cuboid({size:[x,y,z]})                              // centered by default
+cuboid({size:[x,y,z]})                              // centered at origin by default
+roundedCuboid({size:[x,y,z], roundRadius:r, segments:32}) // chamfered box — great for cases
 sphere({radius:r, segments:64})
-cylinder({radius:r, height:h, segments:64})          // centered on Z axis
-cylinder({startRadius:r1, endRadius:r2, height:h})   // cone/frustum
+ellipsoid({radius:[rx,ry,rz], segments:64})
+cylinder({radius:r, height:h, segments:64})         // centered on Z axis
+cylinder({startRadius:r1, endRadius:r2, height:h})  // cone/frustum
+roundedCylinder({radius:r, height:h, roundRadius:r2, segments:64}) // pill-shaped
+cylinderElliptic({startRadius:[rx1,ry1], endRadius:[rx2,ry2], height:h})
 torus({innerRadius:r, outerRadius:R, innerSegments:32, outerSegments:128})
-polyhedron({points:[[x,y,z],...], faces:[[0,1,2],...] })
+geodesicSphere({radius:r, frequency:4})             // smooth sphere, no pole artifacts
 
 ── 2D SHAPES (for extrusion) ──
 circle({radius:r, segments:64})
@@ -564,12 +569,15 @@ extrudeHelical({pitch:p, height:h, segments:256}, shape2d)           // HELIX/TH
 
 ── TRANSFORMS ──
 translate([x,y,z], solid)
+translateX(dist, solid) / translateY(dist, solid) / translateZ(dist, solid)
 rotate([rx,ry,rz], solid)           // radians
 rotateX(angle, solid)               // shorthand
 rotateY(angle, solid)
 rotateZ(angle, solid)
 scale([sx,sy,sz], solid)
 mirror({normal:[1,0,0]}, solid)
+center({axes:[true,true,false]}, solid)     // center on X/Y, keep Z position
+align({modes:['center','center','min']}, solid) // align relative to axes
 
 ── HULLS — SMOOTH TRANSITIONS ──
 hull(solidA, solidB)                // convex hull between two shapes — smooth blend
@@ -582,14 +590,15 @@ colorize([r,g,b], solid)            // r,g,b 0.0–1.0
 DESIGN PHILOSOPHY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You are a professional CAD engineer. Generate models that look like they came from Fusion 360:
+- Use roundedCuboid() and roundedCylinder() for realistic chamfered edges — not raw cubes
 - subtract() to hollow bodies, drill bolt holes, create channels, cut slots
 - hull() between cylinders for smooth fillets and organic transitions
 - hullChain() for swept paths (handles, cable routing channels)
 - extrudeRotate() for perfect lathe profiles (knobs, bottles, threads)
 - extrudeHelical() for real screw threads
-- Loop over arrays to create bolt patterns, gear teeth, ventilation grills
-- Use measurements.measureBoundingBox(solid) to verify size
-- Min wall 1.2mm, max 256×256×256mm, base at Z=0
+- Loop over arrays to create bolt patterns, gear teeth, ventilation grills, hex patterns
+- center({axes:[true,true,false]}, part) to center on XY, place base at Z=0
+- Min wall 1.2mm, max 256×256×256mm, base at Z=0, everything in millimeters
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EXAMPLE 1 — Hollow mug with handle, foot ring, and rim bevel:
@@ -667,7 +676,32 @@ const threadProfile=translate([M/2+pitch*0.2,0],circle({radius:pitch*0.4,segment
 const thread=translate([0,0,headH+2], extrudeHelical({pitch:pitch,height:shaftH-4,segments:256},threadProfile));
 return [union(head, shaft, thread)];
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE 4 — Cable management clip with snap-fit:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { booleans, primitives, transforms } = jscad;
+const { union, subtract } = booleans;
+const { roundedCuboid, cylinder, cuboid } = primitives;
+const { translate, rotateX, rotateZ, mirror, mirrorY } = transforms;
+
+const cableD=8, wall=2, len=20;
+// Main body - rounded block
+const body = roundedCuboid({size:[cableD+wall*2, len, cableD/2+wall], roundRadius:1.5, segments:16});
+// Cable channel cutout
+const channel = translate([0, 0, wall/2], cylinder({radius:cableD/2, height:len+1, segments:32}));
+// Cut channel + opening slot (so cable snaps in from top)
+const slot = translate([0, 0, cableD/4+wall/2], cuboid({size:[cableD*0.8, len+1, cableD/2+1]}));
+// Snap tabs: flex arms on each side
+const snapTab = translate([cableD/2+wall*0.5, 0, -cableD/4],
+    roundedCuboid({size:[wall*0.8, len*0.6, wall*1.5], roundRadius:0.4, segments:8}));
+const snapNub = translate([cableD/2+wall*0.9, 0, wall*0.1],
+    cylinder({startRadius:1.2, endRadius:0, height:1.5, segments:16}));
+const tab = union(snapTab, snapNub);
+const tabMirror = mirrorY(tab);  // mirror to other side
+return [subtract(body, channel, slot)]; // snap tabs added separately for flex
+
 X1C rules: base at Z=0, min wall 1.2mm, max 256³mm`;
+
 
 
 // ══════════════════════════════════════════════════════════════
@@ -767,20 +801,6 @@ function saveHistItem(item) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  FONT — load Helvetiker Bold at startup for TextGeometry
-// ══════════════════════════════════════════════════════════════
-let loadedFont = null;
-(async function loadFont() {
-    try {
-        const resp = await fetch('https://cdn.jsdelivr.net/npm/three@0.137.0/examples/fonts/helvetiker_bold.typeface.json');
-        const json = await resp.json();
-        if (typeof THREE.FontLoader !== 'undefined') {
-            const loader = new THREE.FontLoader();
-            loadedFont = loader.parse(json);
-        }
-    } catch(e) { console.warn('Font load failed:', e); }
-})();
-
 // ══════════════════════════════════════════════════════════════
 //  LLM
 // ══════════════════════════════════════════════════════════════
@@ -788,7 +808,7 @@ async function callOpenAICompat(url, key, model, messages) {
     const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 2048 })
+        body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 4096 })
     });
     if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${r.status}`); }
     return (await r.json()).choices[0].message.content;
@@ -804,7 +824,7 @@ async function callGemini(key, model, messages) {
     const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: turns, generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } })
+        body: JSON.stringify({ contents: turns, generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } })
     });
     if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${r.status}`); }
     return (await r.json()).candidates[0].content.parts[0].text;
@@ -967,6 +987,74 @@ function downloadSTL(name) {
     const blob = new Blob([buf], {type:'application/octet-stream'});
     const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:name});
     a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  3MF EXPORT (Bambu Studio compatible, via JSZip)
+// ══════════════════════════════════════════════════════════════
+async function download3MF(name) {
+    if (!lastJSCADSolids.length) { toast('No model to export', 'error'); return; }
+    if (typeof JSZip === 'undefined') { toast('JSZip not loaded', 'error'); return; }
+
+    // Collect all triangles from all solids
+    const vertices = [], triangles = [];
+    let vIdx = 0;
+    for (const solid of lastJSCADSolids) {
+        for (const poly of jscadModeling.geometries.geom3.toPolygons(solid)) {
+            const verts = poly.vertices;
+            if (verts.length < 3) continue;
+            const base = vIdx;
+            for (const v of verts) { vertices.push(v); vIdx++; }
+            for (let i = 1; i < verts.length - 1; i++) {
+                triangles.push([base, base + i, base + i + 1]);
+            }
+        }
+    }
+
+    const vertexXML = vertices.map(v => `        <vertex x="${v[0].toFixed(6)}" y="${v[1].toFixed(6)}" z="${v[2].toFixed(6)}" />`).join('\n');
+    const triangleXML = triangles.map(t => `        <triangle v1="${t[0]}" v2="${t[1]}" v3="${t[2]}" />`).join('\n');
+
+    const modelXML = `<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06">
+  <metadata name="Application">BambuForge</metadata>
+  <metadata name="Title">${name.replace('.3mf','')}</metadata>
+  <resources>
+    <object id="1" type="model">
+      <mesh>
+        <vertices>
+${vertexXML}
+        </vertices>
+        <triangles>
+${triangleXML}
+        </triangles>
+      </mesh>
+    </object>
+  </resources>
+  <build>
+    <item objectid="1" />
+  </build>
+</model>`;
+
+    const rels = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" />
+</Relationships>`;
+
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
+  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml" />
+</Types>`;
+
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypes);
+    zip.folder('_rels').file('.rels', rels);
+    zip.folder('3D').file('3dmodel.model', modelXML);
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('3MF exported — open in Bambu Studio!', 'success');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1219,12 +1307,19 @@ document.getElementById('copyCodeBtn').addEventListener('click', copyCode);
 document.getElementById('copyScadBtn').addEventListener('click', copyCode);
 
 // Download
-document.getElementById('downloadBtn').addEventListener('click', () => {
+document.getElementById('downloadStlBtn').addEventListener('click', () => {
     if (!state.hasModel) return;
     const firstUser = state.history.find(m => m.role === 'user');
     const slug = (firstUser?.content || 'model').slice(0, 28).replace(/[^a-z0-9]/gi, '-').toLowerCase();
     downloadSTL(`bambuforge-${slug}.stl`);
     toast('STL downloaded!', 'success');
+});
+
+document.getElementById('download3mfBtn').addEventListener('click', () => {
+    if (!state.hasModel) { toast('No model generated yet', 'error'); return; }
+    const firstUser = state.history.find(m => m.role === 'user');
+    const slug = (firstUser?.content || 'model').slice(0, 28).replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    download3MF(`bambuforge-${slug}.3mf`);
 });
 
 // New session
