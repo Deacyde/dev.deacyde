@@ -8,11 +8,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/exporters/STLExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/FontLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/geometries/TextGeometry.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/utils/BufferGeometryUtils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/geometries/ParametricGeometry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jscad/modeling@2.13.0/dist/jscad-modeling.min.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -501,158 +502,172 @@ const PROVIDERS = {
     }
 };
 
-const SYSTEM_PROMPT = `You are BambuForge, an expert 3D model engineer generating print-ready geometry for the Bambu Lab X1C (256×256×256 mm build volume, 0.4mm nozzle).
 
-Respond with ONLY a valid JSON object — absolutely no markdown fences, no text outside the JSON:
+const SYSTEM_PROMPT = `You are BambuForge, a CAD engineer generating 3D-printable models for the Bambu Lab X1C using the @jscad/modeling library (JavaScript-native OpenSCAD equivalent).
+
+Respond with ONLY a valid JSON object — no markdown, no text outside JSON:
 {
   "description": "What was built",
   "dimensions": "W × D × H mm",
-  "printNotes": "X1C tips: orientation, supports, infill %, material",
-  "code": "JAVASCRIPT_HERE"
+  "printNotes": "X1C tips: orientation, supports, infill, material",
+  "code": "JAVASCRIPT"
 }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EXECUTION CONTEXT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  THREE  — Three.js r137 (full API available)
-  font   — Helvetiker Bold (for TextGeometry; may be null, check before use)
-  merge(geoArray) — BufferGeometryUtils.mergeBufferGeometries
-  Math   — standard Math object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Variable available: jscad  (the full @jscad/modeling 2.x library)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RETURN FORMAT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Return an array. Each element is either:
-  A) { geometry:BufferGeometry, color:0xHEX, position:{x,y,z}, rotation:{x,y,z}, name:'string' }
-  B) A THREE.Mesh object (set mesh.position/rotation directly, assign mesh.userData.color)
+Destructure what you need at the top:
+const { booleans, colors, extrusions, geometries, hulls,
+        maths, measurements, primitives, transforms, utils } = jscad;
+const { union, subtract, intersect } = booleans;
+const { translate, rotate, rotateX, rotateY, rotateZ, scale, mirror } = transforms;
+const { extrudeLinear, extrudeRotate, extrudeHelical } = extrusions;
+const { cuboid, sphere, cylinder, cylinderElliptic, torus,
+        circle, rectangle, square, polygon, polyhedron,
+        triangle, star, ellipse } = primitives;
+const { hull, hullChain } = hulls;
+const { colorize, colorNameToRgb } = colors;
 
-All units = millimeters. Model base at Y=0. Stay within 256×256×256 mm.
+Return an array of JSCAD geom3 solids. Coordinate system: XY = print bed, Z = print height (up).
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GEOMETRY CAPABILITIES — USE ALL OF THESE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FULL API REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. PRIMITIVES — always use high segments:
-   CylinderGeometry(rTop, rBot, h, 64)   SphereGeometry(r, 64, 32)
-   BoxGeometry(w, h, d)                  TorusGeometry(R, tube, 32, 128)
-   ConeGeometry(r, h, 64)               TorusKnotGeometry(R, tube, 200, 20)
+── 3D PRIMITIVES ──
+cuboid({size:[x,y,z]})                              // centered by default
+sphere({radius:r, segments:64})
+cylinder({radius:r, height:h, segments:64})          // centered on Z axis
+cylinder({startRadius:r1, endRadius:r2, height:h})   // cone/frustum
+torus({innerRadius:r, outerRadius:R, innerSegments:32, outerSegments:128})
+polyhedron({points:[[x,y,z],...], faces:[[0,1,2],...] })
 
-2. PARAMETRIC SURFACES — any mathematical surface:
-   new THREE.ParametricGeometry((u, v, target) => {
-     // u,v go 0→1; set target.x/y/z
-     const angle = u * Math.PI * 2;
-     const r = outerR + amplitude * Math.sin(v * Math.PI * ridges);
-     target.set(Math.cos(angle)*r, v*height, Math.sin(angle)*r);
-   }, 128, 64)
-   Use for: twisted columns, wavy surfaces, organic shapes, rippled bowls, scalloped edges
+── 2D SHAPES (for extrusion) ──
+circle({radius:r, segments:64})
+rectangle({size:[w,h]})
+polygon({points:[[x,y],...] })                       // arbitrary 2D shape
+star({vertices:5, outerRadius:R, innerRadius:r})
+ellipse({radius:[rx,ry], segments:64})
 
-3. LATHE — rotationally symmetric objects:
-   const pts = [new THREE.Vector2(r0,y0), new THREE.Vector2(r1,y1), ...]; // profile curve
-   new THREE.LatheGeometry(pts, 64)
-   Use for: bottles, vases, cups, bowls, knobs, wheels, columns
+── BOOLEANS — THE CORE POWER ──
+subtract(base, tool1, tool2, ...)   // CSG difference — drills holes, cuts slots
+union(solid1, solid2, ...)          // merges solids seamlessly
+intersect(solid1, solid2, ...)      // keeps only overlapping volume
 
-4. EXTRUDE with bezier curves — complex 2D profiles extruded to 3D:
-   const shape = new THREE.Shape();
-   shape.moveTo(x,y); shape.lineTo(x,y);
-   shape.bezierCurveTo(cp1x,cp1y, cp2x,cp2y, x,y); // smooth curves
-   shape.absarc(cx,cy, r, startA, endA, clockwise);
-   shape.quadraticCurveTo(cpx,cpy, x,y);
-   // Add holes: const h = new THREE.Path(); h.absarc(0,0,r,0,PI*2,true); shape.holes.push(h);
-   new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:true, bevelSize, bevelThickness, bevelSegments:5})
-   Use for: gears, brackets, logos, phone cases, custom profiles, keys, coins
+── EXTRUSIONS ──
+extrudeLinear({height:h, twistAngle:0, scale:1}, shape2d)
+extrudeLinear({height:h, twistAngle:Math.PI*2}, circle({radius:r}))  // twisted rod
+extrudeRotate({segments:64, angle:Math.PI*2}, shape2d)               // lathe/rotation
+extrudeHelical({pitch:p, height:h, segments:256}, shape2d)           // HELIX/THREADS
 
-5. TUBE — smooth 3D curves:
-   const curve = new THREE.CatmullRomCurve3([v3, v3, v3, ...], closed);
-   new THREE.TubeGeometry(curve, 128, radius, 20, closed)
-   Use for: handles, springs, coils, DNA, rope, pipes, cables, racetrack
+── TRANSFORMS ──
+translate([x,y,z], solid)
+rotate([rx,ry,rz], solid)           // radians
+rotateX(angle, solid)               // shorthand
+rotateY(angle, solid)
+rotateZ(angle, solid)
+scale([sx,sy,sz], solid)
+mirror({normal:[1,0,0]}, solid)
 
-6. PROCEDURAL BufferGeometry — generate any shape algorithmically:
-   const geo = new THREE.BufferGeometry();
-   const verts = []; const normals = []; const indices = [];
-   // ... loop to compute vertices ...
-   geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-   geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-   geo.setIndex(indices);
-   geo.computeVertexNormals();
-   Use for: gears, spirals, fractals, terrain, custom organic shapes
+── HULLS — SMOOTH TRANSITIONS ──
+hull(solidA, solidB)                // convex hull between two shapes — smooth blend
+hullChain(s1, s2, s3, ...)          // smooth swept path between shapes
 
-7. TEXT:
-   if(font) {
-     const tg = new THREE.TextGeometry('TEXT', {font, size:10, height:3,
-       curveSegments:12, bevelEnabled:true, bevelThickness:0.8, bevelSize:0.5, bevelSegments:5});
-     tg.computeBoundingBox();
-     tg.translate(-(tg.boundingBox.max.x - tg.boundingBox.min.x)/2, 0, 0);
-   }
+── COLOR (for multi-part visualization) ──
+colorize([r,g,b], solid)            // r,g,b 0.0–1.0
 
-8. MERGE geometries into one mesh:
-   merge([geo1, geo2, geo3]) → single BufferGeometry
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESIGN PHILOSOPHY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+You are a professional CAD engineer. Generate models that look like they came from Fusion 360:
+- subtract() to hollow bodies, drill bolt holes, create channels, cut slots
+- hull() between cylinders for smooth fillets and organic transitions
+- hullChain() for swept paths (handles, cable routing channels)
+- extrudeRotate() for perfect lathe profiles (knobs, bottles, threads)
+- extrudeHelical() for real screw threads
+- Loop over arrays to create bolt patterns, gear teeth, ventilation grills
+- Use measurements.measureBoundingBox(solid) to verify size
+- Min wall 1.2mm, max 256×256×256mm, base at Z=0
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-COMPLEXITY EXPECTATIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- You are a CAD engineer. Create DETAILED, REALISTIC models — not toy shapes.
-- Use 20–50+ mesh parts for complex objects. More parts = more detail.
-- Use LOOPS to generate repeated features (gear teeth, threads, fins, ribs, bolts).
-- Use MATH (sin, cos, PI) for precision — not eyeballed numbers.
-- Add FINE DETAILS: chamfers (bevelEnabled:true), fillets, ridges, knurling, slots.
-- REALISTIC proportions based on real-world dimensions.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE 1 — Hollow mug with handle, foot ring, and rim bevel:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { booleans, extrusions, primitives, transforms, hulls } = jscad;
+const { union, subtract } = booleans;
+const { extrudeRotate, extrudeLinear } = extrusions;
+const { circle, rectangle, polygon } = primitives;
+const { translate, rotateX } = transforms;
+const { hullChain } = hulls;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXAMPLE — Spur Gear (procedural via ExtrudeGeometry):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const meshes=[];
-const teeth=24,mod=3,pressAngle=20*Math.PI/180,thickness=12;
-const pitchR=mod*teeth/2,addR=pitchR+mod,dedR=pitchR-1.25*mod;
-const shape=new THREE.Shape();
-for(let i=0;i<teeth;i++){
-  const base=i/teeth*Math.PI*2;
-  const pitch=Math.PI/teeth;
-  const pa=pressAngle;
-  // involute approximation per tooth
-  const a0=base-pitch*0.6, a1=base-pitch*0.3, a2=base+pitch*0.3, a3=base+pitch*0.6;
-  const p=(r,a)=>({x:r*Math.cos(a),y:r*Math.sin(a)});
-  if(i===0){const pt=p(dedR,a0);shape.moveTo(pt.x,pt.y);}
-  else{const pt=p(dedR,a0);shape.lineTo(pt.x,pt.y);}
-  const p1=p(pitchR,a1),p2=p(addR,a1+pitch*0.1),p3=p(addR,a2-pitch*0.1),p4=p(pitchR,a2);
-  shape.bezierCurveTo(p1.x,p1.y,p2.x,p2.y,p2.x,p2.y);
-  shape.lineTo(p3.x,p3.y);
-  shape.bezierCurveTo(p4.x,p4.y,p4.x,p4.y,p(dedR,a3).x,p(dedR,a3).y);
-}
-shape.closePath();
-const bore=new THREE.Path();bore.absarc(0,0,pitchR*0.25,0,Math.PI*2,true);shape.holes.push(bore);
-const keyW=mod*1.2,keyH=mod*2;
-const keyway=new THREE.Path();keyway.moveTo(-keyW/2,pitchR*0.2);keyway.lineTo(keyW/2,pitchR*0.2);keyway.lineTo(keyW/2,pitchR*0.25+keyH);keyway.lineTo(-keyW/2,pitchR*0.25+keyH);keyway.closePath();
-shape.holes.push(keyway);
-meshes.push({geometry:new THREE.ExtrudeGeometry(shape,{depth:thickness,bevelEnabled:true,bevelSize:0.4,bevelThickness:0.4,bevelSegments:3}),color:0x888888,position:{x:0,y:0,z:0},rotation:{x:Math.PI/2,y:0,z:0},name:'gear'});
-return meshes;
+// Lathe profile: [radius, z_height] pairs defining outer wall
+const outerProfile = polygon({points:[
+  [0,0],[34,0],[35,2],[33,65],[35,67],[35,70],[33,70],[33,68],[0,68]
+]});
+const outer = extrudeRotate({segments:64}, outerProfile);
+// Inner void
+const innerProfile = polygon({points:[
+  [0,2],[31,2],[31,65],[29,65],[0,65]
+]});
+const inner = extrudeRotate({segments:64}, innerProfile);
+const body = subtract(outer, inner);
+// Handle: smooth swept tube via hullChain of translated spheres
+const handlePath = [
+  translate([36,0,18], primitives.sphere({radius:4,segments:16})),
+  translate([52,0,35], primitives.sphere({radius:4,segments:16})),
+  translate([36,0,52], primitives.sphere({radius:4,segments:16})),
+];
+const handle = subtract(hullChain(...handlePath), outer);
+return [union(body, handle)];
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXAMPLE — Parametric twisted vase with ridges:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const meshes=[];
-const H=100,baseR=30,topR=20,ridges=12,twist=Math.PI*1.5,wallT=2.5;
-const profile=(u,v,t)=>{
-  const y=v*H;const taper=baseR+(topR-baseR)*v;
-  const wave=3*Math.sin(v*Math.PI*3)*Math.pow(Math.sin(v*Math.PI),0.5);
-  const ridge=2*Math.sin(u*Math.PI*2*ridges);
-  const r=taper+wave+ridge;const angle=u*Math.PI*2+v*twist;
-  t.set(Math.cos(angle)*r,y,Math.sin(angle)*r);
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE 2 — Spur gear with bore + keyway:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { booleans, extrusions, primitives, transforms } = jscad;
+const { union, subtract } = booleans;
+const { extrudeLinear } = extrusions;
+const { polygon, cylinder, cuboid } = primitives;
+const { translate, rotateZ } = transforms;
+
+const teeth=20, mod=3, h=10;
+const pitchR=mod*teeth/2, addR=pitchR+mod, dedR=pitchR-1.25*mod;
+const toothPts = (i) => {
+  const a = i/teeth*Math.PI*2, p=Math.PI/teeth;
+  const pt=(r,ang)=>[r*Math.cos(ang),r*Math.sin(ang)];
+  return [pt(dedR,a-p*.7),pt(pitchR,a-p*.35),pt(addR,a-p*.1),
+          pt(addR,a+p*.1),pt(pitchR,a+p*.35),pt(dedR,a+p*.7)];
 };
-const outer=new THREE.ParametricGeometry(profile,128,80);
-outer.computeVertexNormals();
-meshes.push({geometry:outer,color:0x44aacc,position:{x:0,y:0,z:0},rotation:{x:0,y:0,z:0},name:'vase'});
-// flat base disc
-meshes.push({geometry:new THREE.CylinderGeometry(baseR-1,baseR-1,wallT,64),color:0x44aacc,position:{x:0,y:wallT/2,z:0},rotation:{x:0,y:0,z:0},name:'base'});
-return meshes;
+const pts=[]; for(let i=0;i<teeth;i++) pts.push(...toothPts(i));
+const gearShape = polygon({points:pts});
+const gear3D = extrudeLinear({height:h}, gearShape);
+const bore = cylinder({radius:mod*2.5, height:h+2, segments:32});
+const keyway = translate([0,mod*2.5+mod*0.5,h/2], cuboid({size:[mod*1.2,mod*1.5,h+2]}));
+return [subtract(gear3D, bore, keyway)];
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-X1C PRINT RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Min wall thickness 1.2mm (3× nozzle width)
-- Avoid overhangs >45° without supports
-- Max 256×256×256mm
-- PLA for most things; PETG for functional parts; ABS/ASA for heat resistance`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE 3 — Hex bolt with threaded shaft:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { booleans, extrusions, primitives, transforms } = jscad;
+const { union, subtract } = booleans;
+const { extrudeLinear, extrudeHelical } = extrusions;
+const { cylinder, circle, polygon, sphere } = primitives;
+const { translate, rotateX } = transforms;
 
+const M=8, pitch=1.25, shaftH=35, headH=6;
+// Hex head
+const hexPts=Array.from({length:6},(_,i)=>{const a=i*Math.PI/3+Math.PI/6;return[Math.cos(a)*7.5,Math.sin(a)*7.5];});
+const head=extrudeLinear({height:headH}, polygon({points:hexPts}));
+// Washer face chamfer
+const chamfer=subtract(cylinder({radius:M/2+2,height:1.5,segments:32}),cylinder({startRadius:M/2+2,endRadius:M/2,height:1.5,segments:32}));
+// Shaft
+const shaft=translate([0,0,headH], cylinder({radius:M/2,height:shaftH,segments:32}));
+// Helix thread profile
+const threadProfile=translate([M/2+pitch*0.2,0],circle({radius:pitch*0.4,segments:8}));
+const thread=translate([0,0,headH+2], extrudeHelical({pitch:pitch,height:shaftH-4,segments:256},threadProfile));
+return [union(head, shaft, thread)];
+
+X1C rules: base at Z=0, min wall 1.2mm, max 256³mm`;
 
 
 // ══════════════════════════════════════════════════════════════
@@ -725,6 +740,7 @@ try {
     scene.add(bvBox);
 
     modelGroup = new THREE.Group();
+    modelGroup.rotation.x = -Math.PI / 2; // JSCAD Z-up → Three.js Y-up
     scene.add(modelGroup);
 
     threeReady = true;
@@ -828,49 +844,75 @@ function extractJSON(raw) {
     throw new Error('Could not parse JSON from LLM response.');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  JSCAD CODE EXECUTION
+// ══════════════════════════════════════════════════════════════
+let lastJSCADSolids = [];  // kept for STL export
+
 function runModelCode(code) {
-    const merge = (geos) => THREE.BufferGeometryUtils.mergeBufferGeometries(geos, false);
+    if (typeof jscadModeling === 'undefined') throw new Error('@jscad/modeling not loaded');
     // eslint-disable-next-line no-new-func
-    const fn = new Function('THREE', 'font', 'merge', 'Math', '"use strict";\n' + code);
-    const result = fn(THREE, loadedFont, merge, Math);
-    if (!Array.isArray(result)) throw new Error('Code must return an array.');
+    const fn = new Function('jscad', 'Math', '"use strict";\n' + code);
+    let result = fn(jscadModeling, Math);
+    if (!Array.isArray(result)) result = [result];
     if (result.length === 0) throw new Error('Code returned empty array.');
+    // Verify they are geom3 solids
+    result.forEach((s, i) => {
+        if (!s || !s.polygons) throw new Error(`Item ${i} is not a valid JSCAD geom3 solid. Make sure you return solid objects (result of primitives/booleans/extrusions).`);
+    });
     return result;
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MESH RENDER + CAMERA FIT
+//  JSCAD → THREE.JS GEOMETRY CONVERSION
 // ══════════════════════════════════════════════════════════════
+function jscadSolidToThreeGeo(solid) {
+    const polys = jscadModeling.geometries.geom3.toPolygons(solid);
+    const positions = [], normals = [];
+    for (const poly of polys) {
+        const verts = poly.vertices;
+        if (verts.length < 3) continue;
+        const v0=verts[0],v1=verts[1],v2=verts[2];
+        const ax=v1[0]-v0[0],ay=v1[1]-v0[1],az=v1[2]-v0[2];
+        const bx=v2[0]-v0[0],by=v2[1]-v0[1],bz=v2[2]-v0[2];
+        const nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx;
+        const len=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+        const nnx=nx/len, nny=ny/len, nnz=nz/len;
+        for (let i=1; i<verts.length-1; i++) {
+            for (const v of [verts[0],verts[i],verts[i+1]]) {
+                positions.push(v[0],v[1],v[2]);
+                normals.push(nnx,nny,nnz);
+            }
+        }
+    }
+    if (positions.length === 0) throw new Error('Solid produced no triangles');
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return geo;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER JSCAD SOLIDS
+// ══════════════════════════════════════════════════════════════
+const SOLID_COLORS = [0x4488ff, 0x44bbcc, 0x88aaee, 0x6644cc, 0x44aa88, 0xcc8844];
+
 function clearModel() {
     if (!threeReady) return;
     modelGroup.children.slice().forEach(c => { c.geometry?.dispose(); c.material?.dispose(); modelGroup.remove(c); });
 }
 
-function renderDescriptors(descriptors) {
+function renderDescriptors(solids) {
     if (!threeReady) return { size: { x:0, y:0, z:0 }, center: { x:0, y:0, z:0 } };
     clearModel();
-    descriptors.forEach(d => {
-        let mesh;
-        if (d.isMesh) {
-            // LLM returned a THREE.Mesh directly
-            mesh = d;
-        } else {
-            const mat = new THREE.MeshPhongMaterial({
-                color: d.color ?? 0x888888,
-                shininess: 60,
-                specular: 0x333333,
-                side: THREE.FrontSide
-            });
-            mesh = new THREE.Mesh(d.geometry, mat);
-        }
+    solids.forEach((solid, idx) => {
+        const geo = jscadSolidToThreeGeo(solid);
+        // Extract color if set via colorize()
+        let color = SOLID_COLORS[idx % SOLID_COLORS.length];
+        if (solid.color) color = new THREE.Color(solid.color[0], solid.color[1], solid.color[2]).getHex();
+        const mat = new THREE.MeshPhongMaterial({ color, shininess: 70, specular: 0x444444, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geo, mat);
         mesh.castShadow = mesh.receiveShadow = true;
-        if (d.position && !d.isMesh) mesh.position.set(d.position.x||0, d.position.y||0, d.position.z||0);
-        if (d.rotation && !d.isMesh) mesh.rotation.set(d.rotation.x||0, d.rotation.y||0, d.rotation.z||0);
-        if (d.name) mesh.name = d.name;
-        // compute normals for smooth shading on custom geometry
-        if (!d.isMesh && d.geometry) {
-            d.geometry.computeVertexNormals();
-        }
         modelGroup.add(mesh);
     });
 
@@ -889,13 +931,41 @@ function setWireframe(on) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  STL EXPORT
+//  BINARY STL EXPORT (direct from JSCAD polygons — no Three.js)
 // ══════════════════════════════════════════════════════════════
 function downloadSTL(name) {
-    if (!threeReady) { toast('3D preview not available', 'error'); return; }
-    const stl  = new THREE.STLExporter().parse(modelGroup, { binary: true });
-    const blob = new Blob([stl], { type: 'application/octet-stream' });
-    const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    if (!lastJSCADSolids.length) { toast('No model to export', 'error'); return; }
+    let triCount = 0;
+    const allPolys = [];
+    for (const solid of lastJSCADSolids) {
+        const polys = jscadModeling.geometries.geom3.toPolygons(solid);
+        for (const poly of polys) {
+            if (poly.vertices.length >= 3) { triCount += poly.vertices.length - 2; allPolys.push(poly); }
+        }
+    }
+    const buf = new ArrayBuffer(84 + triCount * 50);
+    const dv = new DataView(buf);
+    const hdr = new TextEncoder().encode('BambuForge export - bambu lab x1c');
+    for (let i=0; i<Math.min(hdr.length,80); i++) dv.setUint8(i, hdr[i]);
+    dv.setUint32(80, triCount, true);
+    let offset = 84;
+    for (const poly of allPolys) {
+        const verts = poly.vertices;
+        const v0=verts[0],v1=verts[1],v2=verts[2];
+        const ax=v1[0]-v0[0],ay=v1[1]-v0[1],az=v1[2]-v0[2];
+        const bx=v2[0]-v0[0],by=v2[1]-v0[1],bz=v2[2]-v0[2];
+        const nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx;
+        const len=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+        for (let i=1; i<verts.length-1; i++) {
+            dv.setFloat32(offset,nx/len,true); dv.setFloat32(offset+4,ny/len,true); dv.setFloat32(offset+8,nz/len,true); offset+=12;
+            for (const v of [verts[0],verts[i],verts[i+1]]) {
+                dv.setFloat32(offset,v[0],true); dv.setFloat32(offset+4,v[1],true); dv.setFloat32(offset+8,v[2],true); offset+=12;
+            }
+            dv.setUint16(offset,0,true); offset+=2;
+        }
+    }
+    const blob = new Blob([buf], {type:'application/octet-stream'});
+    const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:name});
     a.click(); URL.revokeObjectURL(a.href);
 }
 
@@ -964,6 +1034,7 @@ function renderHistory() {
             if (!it) return;
             try {
                 const descs = runModelCode(it.code);
+                lastJSCADSolids = descs;
                 const { size } = renderDescriptors(descs);
                 state.currentCode = it.code;
                 state.hasModel = true;
@@ -1059,6 +1130,7 @@ async function generate() {
             if (!result.code) throw new Error('LLM returned no code field.');
 
             const descs = runModelCode(result.code);
+            lastJSCADSolids = descs;
             const { size } = renderDescriptors(descs);
 
             state.currentCode = result.code;
