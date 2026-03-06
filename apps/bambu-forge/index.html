@@ -334,7 +334,7 @@
     <!-- Header -->
     <header class="header">
         <a class="logo" href="/apps/bambu-forge/">
-            <span class="logo-emoji">🖨️</span> BambuForge
+            <span class="logo-emoji">🖨️</span> BambuForge <span id="appVersion" style="font-size:0.6rem;opacity:0.5;font-weight:400;margin-left:2px"></span>
         </a>
         <a class="logo-back" href="/index.html">← dev.deacyde.com</a>
         <div class="header-right">
@@ -1292,24 +1292,74 @@ function refreshDots(k) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  AI MESH MODE — Meshy.ai text-to-3D and image-to-3D
+//  AI MESH MODE — Tripo3D / Meshy.ai direct API calls (no proxy needed)
 // ══════════════════════════════════════════════════════════════
+const APP_VERSION = 'v0.4.0';
 let currentMode = 'cad'; // 'cad' | 'mesh-text' | 'mesh-image'
 
-// Safe fetch wrapper — always returns parsed JSON or throws with useful message
+// Safe JSON fetch — always throws a useful error
 async function apiFetch(url, options = {}) {
     let resp;
-    try {
-        resp = await fetch(url, options);
-    } catch(e) {
-        throw new Error(`Network error calling ${url}: ${e.message}`);
-    }
+    try { resp = await fetch(url, options); }
+    catch(e) { throw new Error(`Network error: ${e.message}`); }
     const text = await resp.text();
-    if (!text) throw new Error(`Empty response from ${url} (HTTP ${resp.status}) — check that the Cloudflare Pages Function is deployed`);
+    if (!text) throw new Error(`Empty response (HTTP ${resp.status}) from ${url}`);
     let data;
-    try { data = JSON.parse(text); } catch(e) { throw new Error(`Non-JSON response (HTTP ${resp.status}): ${text.slice(0, 200)}`); }
-    if (data.error) throw new Error(data.error);
+    try { data = JSON.parse(text); } catch(e) { throw new Error(`Non-JSON (HTTP ${resp.status}): ${text.slice(0, 200)}`); }
+    if (data.error) throw new Error(typeof data.error === 'object' ? JSON.stringify(data.error) : data.error);
     return data;
+}
+
+// ── Tripo3D direct ───────────────────────────────────────────
+async function tripoCreate(apiKey, body) {
+    const data = await apiFetch('https://platform.tripo3d.ai/v2/openapi/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+    });
+    if (data.code !== 0) throw new Error(data.message || `Tripo3D error code ${data.code}`);
+    return data.data.task_id;
+}
+async function tripoPoll(apiKey, taskId) {
+    const data = await apiFetch(`https://platform.tripo3d.ai/v2/openapi/task/${taskId}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (data.code !== 0) throw new Error(data.message || `Tripo3D poll error ${data.code}`);
+    const t = data.data;
+    return {
+        status:   t.status === 'success' ? 'success' : t.status === 'failed' ? 'failed' : 'running',
+        progress: t.progress || 0,
+        glbUrl:   t.output?.model || null,
+        error:    t.task_error?.message || null
+    };
+}
+
+// ── Meshy direct ─────────────────────────────────────────────
+async function meshyCreate(apiKey, action, params) {
+    const url = action === 'text-to-3d'
+        ? 'https://api.meshy.ai/openapi/v2/text-to-3d'
+        : 'https://api.meshy.ai/openapi/v1/image-to-3d';
+    const body = action === 'text-to-3d'
+        ? { mode: 'preview', prompt: params.prompt, art_style: 'realistic', should_remesh: true, topology: 'triangle' }
+        : { image_url: params.image_url, enable_pbr: true };
+    const data = await apiFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+    });
+    return data.result;
+}
+async function meshyPoll(apiKey, taskId, action) {
+    const url = action === 'text-to-3d'
+        ? `https://api.meshy.ai/openapi/v2/text-to-3d/${taskId}`
+        : `https://api.meshy.ai/openapi/v1/image-to-3d/${taskId}`;
+    const data = await apiFetch(url, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+    return {
+        status:   data.status === 'SUCCEEDED' ? 'success' : data.status === 'FAILED' ? 'failed' : 'running',
+        progress: data.progress || 0,
+        glbUrl:   data.model_urls?.glb || null,
+        error:    data.task_error?.message || null
+    };
 }
 
 async function generateWithMeshy(prompt, mode) {
@@ -1325,11 +1375,11 @@ async function generateWithMeshy(prompt, mode) {
         throw new Error('No AI Mesh key — click ⚙️ to add a Tripo3D key (free credits) or Meshy key.');
     }
 
-    let taskId;
     const providerLabel = provider === 'tripo3d' ? 'Tripo3D' : 'Meshy.ai';
+    const action = mode === 'mesh-image' ? 'image-to-3d' : 'text-to-3d';
+    let taskId;
 
     if (mode === 'mesh-image') {
-        // Step 1: generate image with DALL-E
         const openaiKey = keys.openai;
         if (!openaiKey) throw new Error('Image→3D mode needs an OpenAI key for DALL-E. Click ⚙️ to add one.');
         setLoading(true, 'DALL-E 3 generating reference image…');
@@ -1345,50 +1395,41 @@ async function generateWithMeshy(prompt, mode) {
         if (!imgResp.ok) { const e = await imgResp.json().catch(()=>({})); throw new Error(e.error?.message || `DALL-E error ${imgResp.status}`); }
         const imgData = await imgResp.json();
         const imageUrl = imgData.data[0].url;
-
         document.getElementById('aiImageEl').src = imageUrl;
         document.getElementById('aiImagePreview').style.display = 'block';
 
         setLoading(true, `Converting image to 3D mesh (${providerLabel})… this takes ~2 min`);
-        const taskData = await apiFetch('/api/meshy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider, action: 'image-to-3d', apiKey, image_url: imageUrl })
-        });
-        taskId = taskData.taskId;
-
+        taskId = provider === 'tripo3d'
+            ? await tripoCreate(apiKey, { type: 'image_to_model', file: { type: 'jpg', url: imageUrl } })
+            : await meshyCreate(apiKey, action, { image_url: imageUrl });
     } else {
         setLoading(true, `${providerLabel} generating 3D mesh… this takes ~2 min`);
-        const taskData = await apiFetch('/api/meshy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider, action: 'text-to-3d', apiKey, prompt })
-        });
-        taskId = taskData.taskId;
+        taskId = provider === 'tripo3d'
+            ? await tripoCreate(apiKey, { type: 'text_to_model', model_version: 'v2.5-20250123', prompt })
+            : await meshyCreate(apiKey, action, { prompt });
     }
 
-    const glbUrl = await pollMeshyTask(taskId, apiKey, provider, mode === 'mesh-image' ? 'image-to-3d' : 'text-to-3d');
+    const glbUrl = await pollMeshyTask(taskId, apiKey, provider, action);
     setLoading(true, 'Loading 3D model…');
     await loadGLBIntoScene(glbUrl);
 }
 
 async function pollMeshyTask(taskId, apiKey, provider, action) {
+    const label = provider === 'tripo3d' ? 'Tripo3D' : 'Meshy.ai';
     const MAX_POLLS = 80;
     for (let i = 0; i < MAX_POLLS; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        const data = await apiFetch(
-            `/api/meshy?provider=${provider}&action=${encodeURIComponent(action)}&apiKey=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(taskId)}`
-        );
+        const data = provider === 'tripo3d'
+            ? await tripoPoll(apiKey, taskId)
+            : await meshyPoll(apiKey, taskId, action);
 
-        setLoading(true, `${provider === 'tripo3d' ? 'Tripo3D' : 'Meshy.ai'} generating… ${data.progress || 0}%`);
+        setLoading(true, `${label} generating… ${data.progress || 0}%`);
 
         if (data.status === 'success') {
             if (!data.glbUrl) throw new Error('Generation succeeded but no GLB URL returned');
             return data.glbUrl;
         }
-        if (data.status === 'failed') {
-            throw new Error(data.error || 'Generation failed');
-        }
+        if (data.status === 'failed') throw new Error(data.error || 'Generation failed');
     }
     throw new Error('Generation timed out after 4 minutes');
 }
@@ -1650,6 +1691,7 @@ buildProviderSelect();
 updateModelSelect();
 refreshDots(loadKeys());
 renderHistory();
+document.getElementById('appVersion').textContent = APP_VERSION;
 </script>
 </body>
 </html>
