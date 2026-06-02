@@ -7,6 +7,18 @@
   status = 301
 
 [[redirects]]
+  from = "/rob"
+  to = "https://pi.deacyde.com/rob/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/rob/*"
+  to = "https://pi.deacyde.com/rob/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/404.html"
   status = 404
