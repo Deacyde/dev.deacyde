@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi2 SSH Setup for Star — dev.deacyde.com</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #09090b;
+            color: #e4e4e7;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 1.5rem 1.25rem 3rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.25rem;
+            color: #7dd3fc;
+            text-decoration: none;
+            font-size: 1rem;
+            padding: 0.4rem 0;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        /* Hero */
+        .hero {
+            padding: 0.5rem 0 1.5rem;
+            border-bottom: 1px solid #27272a;
+            margin-bottom: 1.75rem;
+        }
+        .hero h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        .hero p {
+            color: #a1a1aa;
+            font-size: 1rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #1e293b;
+            color: #7dd3fc;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        /* Steps */
+        .step {
+            margin-bottom: 1.5rem;
+        }
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .step-num {
+            width: 2.2rem;
+            height: 2.2rem;
+            min-width: 2.2rem;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #7c3aed);
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f4f4f5;
+        }
+        .step-note {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            padding-left: 2.95rem;
+        }
+
+        /* Code block */
+        .code-block {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .code-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+            gap: 0.75rem;
+        }
+        .code-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .copy-btn {
+            background: #1e293b;
+            color: #7dd3fc;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            min-width: 80px;
+            min-height: 40px;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .copy-btn:active, .copy-btn:hover {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0ea5e9;
+        }
+        .copy-btn.copied {
+            background: #166534;
+            color: #86efac;
+            border-color: #166534;
+        }
+        .copy-btn.failed {
+            background: #7c2d12;
+            color: #fca5a5;
+            border-color: #7c2d12;
+        }
+        pre {
+            padding: 1rem;
+            font-size: 0.88rem;
+            font-family: "SF Mono", "Fira Mono", "Consolas", monospace;
+            color: #d1fae5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            overflow-x: auto;
+            line-height: 1.65;
+        }
+
+        /* Optional section */
+        .optional-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #78716c;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 2rem 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .optional-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #27272a;
+        }
+
+        /* Info box */
+        .info-box {
+            background: #0f172a;
+            border: 1px solid #1e3a5f;
+            border-left: 4px solid #38bdf8;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.93rem;
+            color: #bae6fd;
+        }
+        .info-box strong {
+            color: #7dd3fc;
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 2.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid #27272a;
+            color: #52525b;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(4rem);
+            background: #166534;
+            color: #bbf7d0;
+            padding: 0.7rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 1.65rem; }
+            .step-title { font-size: 1rem; }
+            pre { font-size: 0.82rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a class="back-link" href="/">← dev.deacyde.com</a>
+
+    <div class="hero">
+        <div class="badge">Star · Pi2</div>
+        <h1>Pi2 SSH Setup for Star</h1>
+        <p>Tap any copy button to grab the command, paste it into Pi2's terminal. Run steps in order.</p>
+    </div>
+
+    <div class="info-box">
+        <strong>Before you start</strong>
+        Pi2 needs to be on the network and have a terminal open (keyboard + screen, or existing access). HTTPS hosting here makes clipboard copy more reliable than local HTTP pages.
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Enable SSH on Pi2</div>
+        </div>
+        <p class="step-note">Installs and starts the SSH server. Safe to run even if SSH is already installed.</p>
+        <div class="code-block">
+            <div class="code-toolbar">
+                <span class="code-label">bash</span>
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
+            </div>
+            <pre>sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable --now ssh
+sudo systemctl status ssh --no-pager</pre>
+        </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Add Star's SSH key</div>
+        </div>
+        <p class="step-note">Adds the Star VM public key to authorized_keys so Star can connect without a password.</p>
+        <div class="code-block">
+            <div class="code-toolbar">
+                <span class="code-label">bash</span>
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
+            </div>
+            <pre>mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+printf '%s\n' 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMBT9wijjeRu6j5SCZ2bkT1J7+gHiwhq9zlYmoLeibDQ openclaw3@star-vm' >> "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+grep -n 'openclaw3@star-vm' "$HOME/.ssh/authorized_keys"</pre>
+        </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">Report Pi2 identity back</div>
+        </div>
+        <p class="step-note">Run this and send the output — USER, HOSTNAME, and IPs — back so Star knows how to reach Pi2.</p>
+        <div class="code-block">
+            <div class="code-toolbar">
+                <span class="code-label">bash</span>
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
+            </div>
+            <pre>echo "USER=$(whoami)"
+echo "HOSTNAME=$(hostname)"
+echo "IPS=$(hostname -I)"
+ip -br addr show | grep -E 'wlan0|eth0'</pre>
+        </div>
+    </div>
+
+    <!-- Optional section -->
+    <div class="optional-label">Optional steps</div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num" style="background: #27272a; font-size:0.85rem;">A</div>
+            <div class="step-title" style="color:#a1a1aa;">Set hostname to pi2</div>
+        </div>
+        <p class="step-note">Only needed if the hostname is wrong. Reboots the machine.</p>
+        <div class="code-block">
+            <div class="code-toolbar">
+                <span class="code-label">bash</span>
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
+            </div>
+            <pre>sudo hostnamectl set-hostname pi2
+sudo reboot</pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num" style="background: #27272a; font-size:0.85rem;">B</div>
+            <div class="step-title" style="color:#a1a1aa;">Quick auth self-check</div>
+        </div>
+        <p class="step-note">Confirms the key was written correctly.</p>
+        <div class="code-block">
+            <div class="code-toolbar">
+                <span class="code-label">bash</span>
+                <button class="copy-btn" onclick="copyBlock(this)">Copy</button>
+            </div>
+            <pre>ls -ld "$HOME/.ssh"
+ls -l "$HOME/.ssh/authorized_keys"
+tail -n 5 "$HOME/.ssh/authorized_keys"</pre>
+        </div>
+    </div>
+
+    <div class="footer">
+        dev.deacyde.com · Pi2 SSH Setup for Star · openclaw3@star-vm
+    </div>
+</div>
+
+<div id="toast">Copied!</div>
+
+<script>
+function copyBlock(btn) {
+    var pre = btn.closest('.code-block').querySelector('pre');
+    var text = pre.innerText || pre.textContent;
+
+    function markCopied() {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        showToast('Copied to clipboard');
+        setTimeout(function() {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+        }, 2000);
+    }
+
+    function markFailed() {
+        // Select text as fallback
+        var range = document.createRange();
+        range.selectNodeContents(pre);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        btn.textContent = 'Selected';
+        btn.classList.add('failed');
+        showToast('Text selected — copy manually');
+        setTimeout(function() {
+            btn.textContent = 'Copy';
+            btn.classList.remove('failed');
+        }, 3000);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(markCopied, markFailed);
+    } else {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) { markCopied(); } else { markFailed(); }
+        } catch(e) { markFailed(); }
+    }
+}
+
+function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2200);
+}
+</script>
+</body>
+</html>
